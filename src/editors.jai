@@ -831,6 +831,8 @@ set_lang_from_path :: (buffer: *Buffer, path: string) {
             case "hpp"; #through;
             case "cc";
                 buffer.lang = .C;
+
+            case; if generic_highlighter_can_handle(extension) buffer.lang = .Generic;
         }
     }
 

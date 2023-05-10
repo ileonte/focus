@@ -640,6 +640,7 @@ dont_ignore_next_window_resize := false;
 #load "langs/c.jai";
 #load "langs/focus_config.jai";
 #load "langs/worklog.jai";
+#load "langs/generic.jai";
 
 #if OS == .WINDOWS {
     #load "platform/windows.jai";
