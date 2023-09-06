@@ -612,11 +612,11 @@ Mouse_Button_State :: struct {
 
 WHEEL_SENSITIVITY :: 1.0;
 
-PEN_ICON            :: #run to_string(*convert_utf32_to_utf8(0xf304));
-CASE_SENSITIVE_ICON :: #run to_string(*convert_utf32_to_utf8(0xf031));
-WHOLE_WORD_ICON     :: #run to_string(*convert_utf32_to_utf8(0xe4ba));
-BULLET_ICON         :: #run to_string(*convert_utf32_to_utf8(0x2022));
-XMARK_ICON          :: #run to_string(*convert_utf32_to_utf8(0xf057));
+PEN_ICON            :: #run to_string(*convert_utf32_to_utf8(0xF03EA));
+CASE_SENSITIVE_ICON :: #run to_string(*convert_utf32_to_utf8(0xF0B34));
+WHOLE_WORD_ICON     :: #run to_string(*convert_utf32_to_utf8(0xF0FB9));
+BULLET_ICON         :: #run to_string(*convert_utf32_to_utf8(0xF0A15));
+XMARK_ICON          :: #run to_string(*convert_utf32_to_utf8(0xF015A));
 
 TAB_SIZE: s32 = 4;
 
@@ -638,7 +638,7 @@ DEFAULT_FONT_UI_MEDIUM_SIZE     :: 18;
 DEFAULT_FONT_UI_SMALL_SIZE      :: 14;
 DEFAULT_FONT_UI_VERY_SMALL_SIZE :: 12;
 DEFAULT_FONT_ICONS_SIZE         :: 16;
-DEFAULT_FONT_ICONS_SMALL_SIZE   :: 12;
+DEFAULT_FONT_ICONS_SMALL_SIZE   :: 16;
 DEFAULT_FONT_ICONS_TINY_SIZE    :: 8;
 
 main_font_name := "default";
@@ -821,7 +821,7 @@ DOUBLE_CLICK_TOLERANCE :: 2;    // how many pixels between the click locations a
 FONT         :: #run load_font("FiraCode-Retina.ttf");
 FONT_UI      :: #run load_font("OpenSans-Regular.ttf");
 FONT_UI_BOLD :: #run load_font("OpenSans-SemiBold.ttf");
-FONT_ICONS   :: #run load_font("font-awesome/Font Awesome 6 Free-Solid-900.otf");
+FONT_ICONS   :: #run load_font("MaterialDesignIconsDesktop.ttf");
 
 MIN_FONT_SIZE :: 4;
 MAX_FONT_SIZE :: 30;  // setting a larger size has caused freetype to crash - not sure yet why.

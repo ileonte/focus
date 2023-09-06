@@ -178,24 +178,24 @@ File_Info :: struct {
     project_dir_id: s8 = 0;  // to be used for sorting
 }
 
-File_Icon :: enum u16 {
+File_Icon :: enum {
     // These are character codes for the font-awesome font
-    unknown :: 0xf15b;
-    text    :: 0xf15c;
-    jai     :: 0xf574;
-    cpp     :: 0xf1c9;
-    cs      :: 0xf1c9;
-    worklog :: 0xf46d;
-    git     :: 0xf387;
-    image   :: 0xf1c5;
-    audio   :: 0xf1c7;
-    font    :: 0xf031;
-    key     :: 0xf084;
-    gear    :: 0xf013;
-    folder  :: 0xe185;
-    drive   :: 0xf0a0;
-    js      :: 0xf15c;
-    shell   :: 0xf2d0;
+    unknown :: 0xF086F;
+    text    :: 0xF0219;
+    jai     :: 0xF1A95;
+    cpp     :: 0xF022E;
+    cs      :: 0xF022E;
+    worklog :: 0xF10D4;
+    git     :: 0xF02A2;
+    image   :: 0xF021F;
+    audio   :: 0xF0223;
+    font    :: 0xF06D6;
+    key     :: 0xF0306;
+    gear    :: 0xF0493;
+    folder  :: 0xF024B;
+    drive   :: 0xF02CA;
+    js      :: 0xF031E;
+    shell   :: 0xF018D;
 
-    dots    :: 0xf141;
+    dots    :: 0xF01D8;
 }
