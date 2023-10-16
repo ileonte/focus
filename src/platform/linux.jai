@@ -295,6 +295,9 @@ platform_show_cursor :: (show: bool) {
 
 }
 
+platform_set_window_location :: (x: s32, y: s32, w: s32, h: s32) {
+}
+
 #scope_file
 
 LD  :: #import "Linux_Display";

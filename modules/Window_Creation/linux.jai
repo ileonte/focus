@@ -24,6 +24,11 @@ get_mouse_pointer_position :: inline (right_handed := false) -> x: int, y: int, 
     return x, y, s;
 }
 
+get_window_position_and_size :: (win: Window_Type) -> (x: s32, y: s32, width: s32, height: s32, success := true) {
+    x, y, w, h, s := LD.get_dimensions(win, false);
+    return x, y, w, h, s;
+}
+
 #scope_file
 LD :: #import "Linux_Display";
 #assert(LD.JAI_STDLIB_INTEROP);

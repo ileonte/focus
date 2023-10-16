@@ -684,7 +684,7 @@ jump_to_eye_tracker :: inline (using editor: *Editor, buffer: Buffer) {
             should_jump_to_eye_tracker = editors.active;
     }
     else {
-        add_user_message_error("Eye Tracking is not available in this build of Focus", dismiss_in_seconds = 2, icon="\uf070");
+        add_user_message_error("Eye Tracking is not available in this build of Focus", duration_in_seconds = 2, icon="\uf070");
     }
 }
 

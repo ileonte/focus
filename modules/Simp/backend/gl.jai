@@ -136,12 +136,14 @@ clear_render_target :: (r: float, g: float, b: float, a: float) {
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
-wrapped_GetDC :: (window: HWND) -> HDC {
-    return GetDC(window);
-}
+#if OS == .WINDOWS {
+    wrapped_GetDC :: (window: HWND) -> HDC {
+        return GetDC(window);
+    }
 
-wrapped_SwapBuffers :: (dc: HDC) {
-    SwapBuffers(dc);
+    wrapped_SwapBuffers :: (dc: HDC) {
+        SwapBuffers(dc);
+    }
 }
 
 swap_buffers :: (window: Window_Type, vsync := true) {  // @Incomplete: Have some more-sophisticated vsync flags.
