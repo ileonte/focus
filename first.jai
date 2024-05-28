@@ -24,13 +24,14 @@ build :: () {
     array_add(*import_path, ..options.import_path);
     options.import_path = import_path;
 
-    set_build_options_dc(.{do_output=false});
+    overflow_check := options.arithmetic_overflow_check;
+
+    set_build_options_dc(.{do_output = false});
     set_working_directory(#filepath);
 
     optimized := false;
     windows7  := false;
     set_optimization(*options, .DEBUG);
-    options.arithmetic_overflow_check = .FATAL;
     build_dir := "build_debug";
     options.output_executable_name = "focus";
 
@@ -50,28 +51,43 @@ build :: () {
                 windows7 = true;
                 options.output_executable_name = "focus_windows7";
 
-            case "aarch64";
-                if CPU != .ARM64 {
-                    options.backend = .LLVM;
-                    options.cpu_target = .ARM64;
+            case "cross-aarch64";
+                if CPU == .ARM64 {
+                    print("INFO: Ignoring AArch64 cross-compile request on AArch64 host\n");
+                    continue;
+                }
 
-                    if OS == {
-                        case .LINUX; {
-                            options.llvm_options.target_system_triple = "aarch64-unknown-linux";
-                            options.arithmetic_overflow_check = .OFF;  // @TODO: investigate
-                            options.use_custom_link_command = true;
-                        }
+                options.backend = .LLVM;
+                options.cpu_target = .ARM64;
 
-                        case .MACOS;
-
-                        case; compiler_report(tprint("AArch64 cross-compile not supported on %", OS));
+                if OS == {
+                    case .LINUX; {
+                        options.llvm_options.target_system_triple = "aarch64-linux-gnu";
+                        options.use_custom_link_command = true;
                     }
+
+                    case; compiler_report(tprint("AArch64 cross-compile not supported on %", OS));
                 }
 
             case;
                 compiler_report(tprint("Command-line argument #%, '%', is invalid. Valid options are: 'debug', 'release'.\n", it_index+1, arg));
         }
     }
+
+    if options.cpu_target == .ARM64 {
+        /*
+         * `Basic/Int128.jai` has a bunch of codepaths that generate tons of overflow
+         * errors when building for targets other than x64. We could vendor the `Basic`
+         * module and fix those but I don't really want to do that (we already have a
+         * bunch of local copies for other modules, adding `Basic` would be too much).
+         *
+         *  - ileonte, 2024.05.28
+         */
+        overflow_check = .OFF;
+    } else {
+        overflow_check = .FATAL;
+    }
+    options.arithmetic_overflow_check = overflow_check;
 
     options.output_path = build_dir;
     make_directory_if_it_does_not_exist(build_dir);
