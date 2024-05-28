@@ -97,8 +97,8 @@ DONE;
     active_backend := LD.active_backend();
     assert(active_backend != .UNINITIALIZED);
 
-    timer = LD.timer_create();
-    xdg_reap_timer = LD.timer_create(cb = (tid: LD.Timer, data: *void) {
+    timer = LD.timer_create(name = "Linux Platform timer");
+    xdg_reap_timer = LD.timer_create(name = "XDG Reap timer", cb = (tid: LD.Timer, data: *void) {
         XDG.reap_child_processes();
     });
     LD.timer_start(xdg_reap_timer, 500, 500);

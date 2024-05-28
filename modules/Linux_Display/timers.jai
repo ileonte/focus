@@ -1,6 +1,6 @@
 Timer :: s64;
 
-timer_create :: (user_data: *void = null, cb: type_of(TimerData.cb) = null, initial_tick: u32 = 0, repeat: u32 = 0) -> Timer {
+timer_create :: (name: string, user_data: *void = null, cb: type_of(TimerData.cb) = null, initial_tick: u32 = 0, repeat: u32 = 0) -> Timer {
     TFD_TIMER_ABSTIME : s32 : 1;
 
     tmr: *TimerData;
@@ -18,6 +18,7 @@ timer_create :: (user_data: *void = null, cb: type_of(TimerData.cb) = null, init
         tid = timers.count - 1;
     }
 
+    tmr.name = name;
     tmr.fd = timerfd_create(xx clockid_t.CLOCK_MONOTONIC, O_CLOEXEC);
 
     ev := epoll_event.{
@@ -92,6 +93,7 @@ timers_tick :: () {
 #scope_file
 
 TimerData :: struct {
+    name: string;
     fd: s32 = -1;
     user_data: *void = null;
     cb: #type (tid: Timer, data: *void) = null;

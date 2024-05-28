@@ -150,7 +150,7 @@ wl_init_display :: (display: *Display) -> bool {
         table_add(*d.cursors, cursor.name, cursor);
     }
 
-    d.key_repeat_timer = timer_create(cb = wl_key_repeat_cb, user_data = d);
+    d.key_repeat_timer = timer_create(name = "Wayland Key Repeat timer", cb = wl_key_repeat_cb, user_data = d);
     d.no_loop_mime = sprint("text/x-plain-do-not-loop-on-self;charset=utf-8;pid=%", getpid());
 
     bd: *Base_Display = display;

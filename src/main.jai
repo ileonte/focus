@@ -6,10 +6,12 @@ main :: () {
 
     focus_allocator = context.allocator;  // to be used as a default allocator where we need it
 
-    cpu_info = get_cpu_info();
+    #if CPU == .X64 {
+        cpu_info = get_cpu_info();
 
-    // Meow hash relies on AES instruction support, so fall back to a standard hash function
-    if !check_feature(cpu_info.feature_leaves, x86_Feature_Flag.AES) then calculate_hash = fallback_hash;
+        // Meow hash relies on AES instruction support, so fall back to a standard hash function
+        ifx check_feature(cpu_info.feature_leaves, x86_Feature_Flag.AES) calculate_hash = calculate_meow_hash;
+    }
 
     platform_setup();
 
@@ -153,7 +155,9 @@ main :: () {
     init_logger();
     defer deinit_logger();  // closes log file handles
 
-    if !check_feature(cpu_info.feature_leaves, x86_Feature_Flag.AES) then log_error("CPU doesn't support AES instructions. A slower hash function will be used.");
+    #if CPU == .X64 {
+        if !check_feature(cpu_info.feature_leaves, x86_Feature_Flag.AES) then log_error("CPU doesn't support AES instructions. A slower hash function will be used.");
+    }
 
     // Requires the session to be created and the configs to be loaded
     start_initial_workspace_scan();
@@ -682,7 +686,7 @@ fill_in_missing_default_themes :: () {
     }
 }
 
-calculate_hash: (bytes: [] u8) -> u64 = calculate_meow_hash;
+calculate_hash: (bytes: [] u8) -> u64 = fallback_hash;
 
 // Important directories
 config_dir:   string;
@@ -862,8 +866,6 @@ BUILTIN_THEMES :: #run -> [] Builtin_Theme {
 // A string which contains the path to a file which was just drag-and-dropped into the editor (for the draw code to use)
 just_dropped_file := "";
 
-cpu_info: Cpu_X86;
-
 focus_allocator: Allocator;
 
 // This will be set to `true` in `refresh_config()` to signal that the
@@ -961,7 +963,10 @@ _ :: #import "Linux_Display"()(VALIDATE_USAGE = DEBUG);
 #import "File_Watcher";
 #import "Flat_Pool";
 #import "Math";
-#import "Machine_X64";
+#if CPU == .X64 {
+    #import "Machine_X64";
+    cpu_info: Cpu_X86;
+}
 #import "Process";
 #import "Reflection";
 #import "Sloppy_Math";

@@ -1,4 +1,4 @@
-VERSION      :: #run -> string {
+VERSION :: #run -> string {
     result, revision := run_command("git", "rev-parse", "--short", "HEAD", capture_and_return_output = true);
     if revision return sprint("0.3.6-%", trim(revision));
     return "0.3.6-dev";
@@ -36,20 +36,40 @@ build :: () {
 
     for arg: args {
         if arg == {
-          case "release";
-            optimized = true;
-            build_dir = "build_release";
-            set_optimization(*options, .VERY_OPTIMIZED);
-            options.llvm_options.enable_split_modules = false;
-            options.array_bounds_check = .ON;
-            options.null_pointer_check = .ON;
-            options.arithmetic_overflow_check = .OFF;
-          case "debug";
-          case "windows7";
-            windows7 = true;
-            options.output_executable_name = "focus_windows7";
-          case;
-            compiler_report(tprint("Command-line argument #%, '%', is invalid. Valid options are: 'debug', 'release'.\n", it_index+1, arg));
+            case "release";
+                optimized = true;
+                build_dir = "build_release";
+                set_optimization(*options, .VERY_OPTIMIZED);
+                options.llvm_options.enable_split_modules = false;
+                options.array_bounds_check = .ON;
+                options.null_pointer_check = .ON;
+                options.arithmetic_overflow_check = .OFF;
+            case "debug";
+
+            case "windows7";
+                windows7 = true;
+                options.output_executable_name = "focus_windows7";
+
+            case "aarch64";
+                if CPU != .ARM64 {
+                    options.backend = .LLVM;
+                    options.cpu_target = .ARM64;
+
+                    if OS == {
+                        case .LINUX; {
+                            options.llvm_options.target_system_triple = "aarch64-unknown-linux";
+                            options.arithmetic_overflow_check = .OFF;  // @TODO: investigate
+                            options.use_custom_link_command = true;
+                        }
+
+                        case .MACOS;
+
+                        case; compiler_report(tprint("AArch64 cross-compile not supported on %", OS));
+                    }
+                }
+
+            case;
+                compiler_report(tprint("Command-line argument #%, '%', is invalid. Valid options are: 'debug', 'release'.\n", it_index+1, arg));
         }
     }
 
@@ -72,18 +92,21 @@ build :: () {
 
     compiler_begin_intercept(w);
 
+    // add_build_file("src/entrypoint.jai", w);
     add_build_file("src/main.jai", w);
 
     build_constants := tprint(#string STRING
-            VERSION      :: "%";
-            RELEASE_DATE :: "%";
-            DEBUG        :: %;
-            WINDOWS7     :: %;
+            VERSION           :: "%";
+            RELEASE_DATE      :: "%";
+            DEBUG             :: %;
+            WINDOWS7          :: %;
+            MANUAL_ENTRYPOINT :: %;
         STRING,
             VERSION,
             RELEASE_DATE,
             ifx optimized then "false" else "true",
             ifx windows7  then "true"  else "false",
+            ifx OS == .LINUX && options.cpu_target == .ARM64 then "true" else "false",
     );
     add_build_string(build_constants, w);
 
@@ -91,10 +114,20 @@ build :: () {
     while true {
         message := compiler_wait_for_message();
         if message.workspace != w continue;
-        if message.kind == .COMPLETE {
-            m := cast(*Message_Complete) message;
-            if m.error_code == .COMPILATION_FAILED then failed = true;
-            break;
+        if message.kind == {
+            case .COMPLETE;
+                m := cast(*Message_Complete) message;
+                if m.error_code == .COMPILATION_FAILED then failed = true;
+                break;
+
+            case .PHASE;
+                phase_msg := cast(*Message_Phase) message;
+                if phase_msg.phase == .READY_FOR_CUSTOM_LINK_COMMAND {
+                    #if OS == {
+                        case .LINUX; linux_handle_cross_compile_link(message.workspace, phase_msg);
+                        case;
+                    }
+                }
         }
     }
 
@@ -153,6 +186,8 @@ build :: () {
 #if OS == .WINDOWS {
     #import "Ico_File";
     #import "Windows_Resources";
+} else #if OS == .LINUX {
+    #load "src/platform/linux/build.jai";
 } else #if OS == .MACOS {
     INFO_PLIST_CONTENTS :: #string STRING
 <?xml version="1.0" ?>
