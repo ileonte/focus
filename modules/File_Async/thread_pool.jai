@@ -185,7 +185,7 @@ wait_for_completion :: (queue: *Queue($T), check_only := false) -> T, data: [] u
                 MAX_WAIT :: 16;
                 wait     := 1;
                 while !completion.valid {
-                    for 1..wait #asm { pause; }
+                    for 1..wait pause();
                     if wait < MAX_WAIT then wait <<= 1;
                 }
                 data := completion.data;
@@ -292,7 +292,7 @@ submit_to_queue :: (queue: *Queue($T), operation: File_Operation(T)) -> result :
             success, our_claim = compare_and_swap(*thread.claimed_requests, our_claim, our_claim + 1);
             if !success {
                 for 1..wait {
-                    #asm { pause; }
+                    pause();
                     if wait < MAX_WAIT then wait <<= 1;
                 }
             }
@@ -408,7 +408,7 @@ worker_thread_start :: (queue: *Queue, thread_id: u8) {
             request := *thread.waiting_requests[thread.reaped_requests % queue.COMPLETION_ENTRIES];
             if !request.valid {
                 for 0..6 {
-                    for 1..(1<<it) #asm { pause; }
+                    for 1..(1<<it) pause();
                     if request.valid break;
                 }
                 if !request.valid {
@@ -568,7 +568,7 @@ handle_request :: (queue: *Queue($T), thread: *Worker_Thread, request: *File_Ope
         MAX_WAIT :: 16;
         wait     := 1;
         while !~thread.available_indexes {
-            for 1..wait #asm { pause; }
+            for 1..wait pause();
             if wait == MAX_WAIT then break;
             wait <<= 1;
         }

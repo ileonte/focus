@@ -129,7 +129,6 @@ Error :: struct {
     // #load "thread_pool.jai"; // Uncomment to test or if you are using an old kernel
     #load "io_uring.jai";
 } else #if OS == .MACOS {
-    #assert CPU == .X64 "File_Async uses several x64 #asm blocks that have no ARM64 fallbacks yet.";
     #load "thread_pool.jai";
 } else {
     #assert false "File_Async only supports Windows, Linux, and macOS. Other POSIX OSs may work with thread_pool.";
@@ -141,4 +140,14 @@ error :: (code: type_of(Error.code), platform_code: $T = 0) -> Error {
     ret.code = code;
     ret.platform_code = xx platform_code;
     return ret;
+}
+
+#if CPU == .X64 {
+    #import "Machine_X64";
+} else #if CPU == .ARM64 {
+  pause :: () {
+    #bytes .[0x3F, 0x20, 0x03, 0xD5];  // Yoiked from `Runtime_Support`
+  }
+} else {
+  #assert false "File_Async: architecture not supported";
 }

@@ -555,7 +555,8 @@ submit_operation :: (queue: *Queue($T), operation: *File_Operation(T)) -> result
 
                 opcode      = IORING_OP_STATX;
                 fd          = operation.file.descriptor;
-                other_flags = AT_EMPTY_PATH | AT_STATX_SYNC_AS_STAT;
+                other_flags = AT_EMPTY_PATH | AT_STATX_SYNC_AS_STAT;
+
                 addr        = xx "".data;
                 len         = STATX_SIZE;
                 off         = xx operation.statx;
@@ -676,6 +677,3 @@ submit_sq_entry :: (queue: *Queue, entry_code: Code) -> Error #expand {
 #import "Basic"; // Assert and allocation
 #import "Linux";
 #import "POSIX";
-#if CPU == .X64 {
-    #import "Machine_X64";
-}
