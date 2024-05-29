@@ -24,15 +24,15 @@ build :: () {
     array_add(*import_path, ..options.import_path);
     options.import_path = import_path;
 
-    set_build_options_dc(.{do_output = false});
+    set_build_options_dc(.{do_output=false});
     set_working_directory(#filepath);
 
     optimized := false;
     windows7  := false;
     set_optimization(*options, .DEBUG);
+    options.arithmetic_overflow_check = .FATAL;
     build_dir := "build_debug";
     options.output_executable_name = "focus";
-    options.arithmetic_overflow_check = .FATAL;
 
     for arg: args {
         if arg == {
