@@ -1,4 +1,4 @@
-VERSION :: #run -> string {
+VERSION      :: #run -> string {
     result, revision := run_command("git", "rev-parse", "--short", "HEAD", capture_and_return_output = true);
     if revision return sprint("0.3.6-%", trim(revision));
     return "0.3.6-dev";
