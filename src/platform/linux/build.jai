@@ -7,7 +7,14 @@ linux_handle_cross_compile_link :: (w: Workspace, m: *Message_Phase) {
     target_filename := tprint("%1/%2-aarch64", options.output_path, options.output_executable_name);
 
     /*
-     * Some bullshit
+     * When cross-compiling for AArch64, the Linux compiler will generate multiple manglings for
+     * `Default_Allocator.allocator_proc` (I don't understand why that function specifically, it
+     * just does it consistently). Only one of the manglings is "correct", all the other ones are
+     * just unused references to the to some different mangling that can never be resolved.
+     *
+     * To work-around this problem we parse the object files and record all of the mangled names
+     * of `allocator_proc` that can't be resolved. We later add a linker parameter for each of
+     * these mangled names to artificially "resolve" that specific reference.
      */
     missing_syms := find_orphaned_syms(m.compiler_generated_object_files, "allocator_proc");
     if missing_syms print("INFO: Found % orphaned `allocator_proc` mangling%: %\n",
