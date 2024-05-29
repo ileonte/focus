@@ -24,8 +24,6 @@ build :: () {
     array_add(*import_path, ..options.import_path);
     options.import_path = import_path;
 
-    overflow_check := options.arithmetic_overflow_check;
-
     set_build_options_dc(.{do_output = false});
     set_working_directory(#filepath);
 
@@ -34,6 +32,7 @@ build :: () {
     set_optimization(*options, .DEBUG);
     build_dir := "build_debug";
     options.output_executable_name = "focus";
+    options.arithmetic_overflow_check = .FATAL;
 
     for arg: args {
         if arg == {
@@ -74,20 +73,17 @@ build :: () {
         }
     }
 
-    if options.cpu_target == .ARM64 {
-        /*
-         * `Basic/Int128.jai` has a bunch of codepaths that generate tons of overflow
-         * errors when building for targets other than x64. We could vendor the `Basic`
-         * module and fix those but I don't really want to do that (we already have a
-         * bunch of local copies for other modules, adding `Basic` would be too much).
-         *
-         *  - ileonte, 2024.05.28
-         */
-        overflow_check = .OFF;
-    } else {
-        overflow_check = .FATAL;
+    /*
+     * `Basic/Int128.jai` has a bunch of codepaths that generate tons of overflow
+     * errors when building for targets other than x64. We could vendor the `Basic`
+     * module and fix those but I don't really want to do that (we already have a
+     * bunch of local copies for other modules, adding `Basic` would be too much).
+     *
+     *  - ileonte, 2024.05.28
+     */
+    if optimized || options.cpu_target != .X64 {
+        options.arithmetic_overflow_check = .OFF;
     }
-    options.arithmetic_overflow_check = overflow_check;
 
     options.output_path = build_dir;
     make_directory_if_it_does_not_exist(build_dir);
@@ -108,7 +104,6 @@ build :: () {
 
     compiler_begin_intercept(w);
 
-    // add_build_file("src/entrypoint.jai", w);
     add_build_file("src/main.jai", w);
 
     build_constants := tprint(#string STRING
@@ -116,13 +111,11 @@ build :: () {
             RELEASE_DATE      :: "%";
             DEBUG             :: %;
             WINDOWS7          :: %;
-            MANUAL_ENTRYPOINT :: %;
         STRING,
             VERSION,
             RELEASE_DATE,
             ifx optimized then "false" else "true",
-            ifx windows7  then "true"  else "false",
-            ifx OS == .LINUX && options.cpu_target == .ARM64 then "true" else "false",
+            ifx windows7  then "true"  else "false"
     );
     add_build_string(build_constants, w);
 
@@ -142,6 +135,11 @@ build :: () {
                     #if OS == {
                         case .LINUX; linux_handle_cross_compile_link(message.workspace, phase_msg);
                         case;
+                            /*
+                            * We expect `READY_FOR_CUSTOM_LINK_COMMAND` to be generated only when cross-compiling.
+                            * Error out here just to be sure we didn't mess something up.
+                            */
+                            compiler_report("Error: Got `READY_FOR_CUSTOM_LINK_COMMAND` but we're not handling it for this OS\n");
                     }
                 }
         }
