@@ -276,7 +276,7 @@ x11_toggle_fullscreen :: (window: *Window, desire_fullscreen: bool, saved: *Save
 }
 
 x11_create_window :: (display: *Display, window: *Window, width: int, height: int, window_name: string,
-    window_x: int, window_y: int, csd_size: s32, parent: *Window, background_color_rgb: [3]float) -> bool
+    window_x: int, window_y: int, parent: *Window, background_color_rgb: [3]float) -> bool
 {
     to_u16 :: (f: float) -> u16 {
         u := cast(s32)(f * 65535);
@@ -307,6 +307,8 @@ x11_create_window :: (display: *Display, window: *Window, width: int, height: in
             maximize_window            = x11_maximize_window,
             set_cursor_from_theme      = x11_set_cursor_from_theme,
             get_dpi_scaling_factor     = x11_get_dpi_scaling_factor,
+            enable_csd                 = x11_enable_csd,
+            disable_csd                = x11_disable_csd,
         },
 
         display = display,
@@ -379,6 +381,14 @@ x11_create_window :: (display: *Display, window: *Window, width: int, height: in
 
     window.x11 = x11_win;
     return true;
+}
+
+x11_enable_csd :: (w: *Window, border_size: s32, title_size: s32) -> bool {
+    return false;
+}
+
+x11_disable_csd :: (w: *Window) {
+    /* NOOP */
 }
 
 x11_set_icon_from_raw_data :: (window: *Window, data: *u8, width: u32, height: u32) {

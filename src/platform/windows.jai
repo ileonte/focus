@@ -53,19 +53,19 @@ platform_get_centered_window_dimensions :: (open_on_biggest: bool) -> s32, s32, 
 }
 
 platform_create_window :: () {
-    window = create_window(window_width, window_height, window_generic_title, window_x, window_y, background_color_rgb = color_as_3_floats(Color.BACKGROUND_0));
+    window = WC.create_window(window_width, window_height, window_generic_title, window_x, window_y, background_color_rgb = color_as_3_floats(Color.BACKGROUND_0));
     platform_set_border_color();
 }
 
-platform_maximize_window :: (window: Window_Type) {
+platform_maximize_window :: (window: WC.Window_Type) {
     ShowWindow(window, SW_MAXIMIZE);
 }
 
-platform_enable_drag_and_drop :: (window: Window_Type) {
+platform_enable_drag_and_drop :: (window: WC.Window_Type) {
     Windows.DragAcceptFiles(window, cast(Windows.BOOL) true);
 }
 
-platform_get_dpi_scale :: (window: Window_Type) -> float {
+platform_get_dpi_scale :: (window: WC.Window_Type) -> float {
     #if WINDOWS7 {
         return 1.0;  // poor Windows 7 users
     } else {
@@ -86,11 +86,11 @@ platform_wake_up_main_thread :: () {
     PostMessageW(window, WM_USER, 0, 0);
 }
 
-platform_set_refresh_timer :: (window: Window_Type) {
+platform_set_refresh_timer :: (window: WC.Window_Type) {
     SetTimer(window, REFRESH_TIMER_ID, 50, cast(*void) 0);  // refresh every 50ms
 }
 
-platform_kill_refresh_timer :: (window: Window_Type) {
+platform_kill_refresh_timer :: (window: WC.Window_Type) {
     KillTimer(window, REFRESH_TIMER_ID);
 }
 

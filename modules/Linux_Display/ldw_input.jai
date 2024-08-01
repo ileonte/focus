@@ -99,24 +99,24 @@ refresh_cursor :: (w: *Wayland_Window) {
 refresh_cursor :: (w: *Wayland_Window, native_x: wl_fixed_t, native_y: wl_fixed_t) {
     w.mouse_x, w.mouse_y = wl_fixed_to_int(native_x), wl_fixed_to_int(native_y);
 
-    p := Point.{w.mouse_x, w.mouse_y};
+    p := W.Point.{w.mouse_x, w.mouse_y};
 
     if w.csd_size > 0 {
-        if point_in_rectangle(w.mouse_x, w.mouse_y, w.client_area) {
+        if W.point_in_rectangle(w.mouse_x, w.mouse_y, w.client_area) {
             w.actual_cursor = *w.cursor;
         } else {
             sys_cursor_name := "default";
 
-            if point_in_rectangle(p, w.csd_title)
+            if W.point_in_rectangle(p, w.csd_title)
                 sys_cursor_name = "default";
 
-            if point_in_rectangle(p, w.csd_top_left) || point_in_rectangle(p, w.csd_bottom_right)
+            if W.point_in_rectangle(p, w.csd_top_left) || W.point_in_rectangle(p, w.csd_bottom_right)
                 sys_cursor_name = "nwse-resize";
-            if point_in_rectangle(p, w.csd_top_right) || point_in_rectangle(p, w.csd_bottom_left)
+            if W.point_in_rectangle(p, w.csd_top_right) || W.point_in_rectangle(p, w.csd_bottom_left)
                 sys_cursor_name = "nesw-resize";
-            if point_in_rectangle(p, w.csd_top) || point_in_rectangle(p, w.csd_bottom)
+            if W.point_in_rectangle(p, w.csd_top) || W.point_in_rectangle(p, w.csd_bottom)
                 sys_cursor_name = "ns-resize";
-            if point_in_rectangle(p, w.csd_left) || point_in_rectangle(p, w.csd_right)
+            if W.point_in_rectangle(p, w.csd_left) || W.point_in_rectangle(p, w.csd_right)
                 sys_cursor_name = "ew-resize";
 
             cursor, found := table_find(*w.display.cursors, sys_cursor_name);
@@ -172,50 +172,50 @@ pointer_listener :: wl_pointer_listener.{
             w := d.current_hovered_window;
 
             if w != null && w.csd_size > 0 {
-                p := Point.{w.mouse_x, w.mouse_y};
+                p := W.Point.{w.mouse_x, w.mouse_y};
 
                 if button == {
                     case BTN_LEFT; {
-                        if point_in_rectangle(p, w.csd_title) {
+                        if W.point_in_rectangle(p, w.csd_title) {
                             xdg_toplevel.move(w.x_toplevel, d.seat, serial);
                             return;
                         }
-                        if point_in_rectangle(p, w.csd_top_left) {
+                        if W.point_in_rectangle(p, w.csd_top_left) {
                             xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_top_left);
                             return;
                         }
-                        if point_in_rectangle(p, w.csd_top) {
+                        if W.point_in_rectangle(p, w.csd_top) {
                             xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_top);
                             return;
                         }
-                        if point_in_rectangle(p, w.csd_top_right) {
+                        if W.point_in_rectangle(p, w.csd_top_right) {
                             xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_top_right);
                             return;
                         }
-                        if point_in_rectangle(p, w.csd_right) {
+                        if W.point_in_rectangle(p, w.csd_right) {
                             xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_right);
                             return;
                         }
-                        if point_in_rectangle(p, w.csd_bottom_right) {
+                        if W.point_in_rectangle(p, w.csd_bottom_right) {
                             xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_bottom_right);
                             return;
                         }
-                        if point_in_rectangle(p, w.csd_bottom) {
+                        if W.point_in_rectangle(p, w.csd_bottom) {
                             xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_bottom);
                             return;
                         }
-                        if point_in_rectangle(p, w.csd_bottom_left) {
+                        if W.point_in_rectangle(p, w.csd_bottom_left) {
                             xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_bottom_left);
                             return;
                         }
-                        if point_in_rectangle(p, w.csd_left) {
+                        if W.point_in_rectangle(p, w.csd_left) {
                             xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_left);
                             return;
                         }
                     }
 
                     case BTN_RIGHT; {
-                        if point_in_rectangle(p, w.csd_title) {
+                        if W.point_in_rectangle(p, w.csd_title) {
                             xdg_toplevel.show_window_menu(w.x_toplevel, d.seat, serial, p.x, p.y);
                             return;
                         }

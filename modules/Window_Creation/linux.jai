@@ -24,6 +24,14 @@ get_mouse_pointer_position :: inline (right_handed := false) -> x: int, y: int, 
     return x, y, s;
 }
 
+enable_client_side_decorations :: (win: Window_Type, border_size: s32, title_size: s32) -> bool {
+    return LD.enable_client_side_decorations(win, border_size, title_size);
+}
+
+disable_client_side_decorations :: (win: Window_Type) {
+    LD.disable_client_side_decorations(win);
+}
+
 #scope_file
 LD :: #import "Linux_Display";
 #assert(LD.JAI_STDLIB_INTEROP);

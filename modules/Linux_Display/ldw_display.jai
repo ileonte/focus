@@ -106,16 +106,17 @@ Wayland_Window :: struct {
     initial_max_height: s32;
 
     csd_size: s32;
-    client_area      : Rect;
-    csd_title        : Rect;
-    csd_top_left     : Rect;
-    csd_top          : Rect;
-    csd_top_right    : Rect;
-    csd_right        : Rect;
-    csd_bottom_right : Rect;
-    csd_bottom       : Rect;
-    csd_bottom_left  : Rect;
-    csd_left         : Rect;
+    csd_title_size: s32;
+    client_area      : W.Rect;
+    csd_title        : W.Rect;
+    csd_top_left     : W.Rect;
+    csd_top          : W.Rect;
+    csd_top_right    : W.Rect;
+    csd_right        : W.Rect;
+    csd_bottom_right : W.Rect;
+    csd_bottom       : W.Rect;
+    csd_bottom_left  : W.Rect;
+    csd_left         : W.Rect;
 }
 
 wl_init_display :: (display: *Display) -> bool {
@@ -554,20 +555,33 @@ window_update_csd_rects :: (w: *Wayland_Window) {
         max_x := w.csd_size + w.window_width;
         max_y := w.csd_size + w.window_height;
 
-        w.client_area      = Rect.{w.csd_size,  w.csd_size, w.window_width, w.window_height};
-        w.csd_top_left     = Rect.{0,           0,          w.csd_size,     w.csd_size     };
-        w.csd_top          = Rect.{w.csd_size,  0,          w.window_width, w.csd_size     };
-        w.csd_top_right    = Rect.{max_x,       0,          w.csd_size,     w.csd_size     };
-        w.csd_right        = Rect.{max_x,       w.csd_size, w.csd_size,     w.window_height};
-        w.csd_bottom_right = Rect.{max_x,       max_y,      w.csd_size,     w.csd_size     };
-        w.csd_bottom       = Rect.{w.csd_size,  max_y,      w.window_width, w.csd_size     };
-        w.csd_bottom_left  = Rect.{0,           max_y,      w.csd_size,     w.csd_size     };
-        w.csd_left         = Rect.{0,           w.csd_size, w.csd_size,     w.window_height};
+        w.client_area = W.Rect.{w.csd_size, w.csd_size + w.csd_title_size, w.window_width, w.window_height - w.csd_title_size};
+        w.csd_title   = W.Rect.{w.csd_size, w.csd_size,                    w.window_width, w.csd_title_size};
+
+        w.csd_top_left     = W.Rect.{0,           0,          w.csd_size,     w.csd_size     };
+        w.csd_top          = W.Rect.{w.csd_size,  0,          w.window_width, w.csd_size     };
+        w.csd_top_right    = W.Rect.{max_x,       0,          w.csd_size,     w.csd_size     };
+        w.csd_right        = W.Rect.{max_x,       w.csd_size, w.csd_size,     w.window_height};
+        w.csd_bottom_right = W.Rect.{max_x,       max_y,      w.csd_size,     w.csd_size     };
+        w.csd_bottom       = W.Rect.{w.csd_size,  max_y,      w.window_width, w.csd_size     };
+        w.csd_bottom_left  = W.Rect.{0,           max_y,      w.csd_size,     w.csd_size     };
+        w.csd_left         = W.Rect.{0,           w.csd_size, w.csd_size,     w.window_height};
+    } else {
+        w.client_area = .{};
+        w.csd_title = .{};
+        w.csd_top_left = .{};
+        w.csd_top = .{};
+        w.csd_top_right = .{};
+        w.csd_right = .{};
+        w.csd_bottom_right = .{};
+        w.csd_bottom = .{};
+        w.csd_bottom_left = .{};
+        w.csd_left = .{};
     }
 }
 
 wl_create_window :: (display: *Display, window: *Window, width: int, height: int, window_name: string,
-    window_x: s64, window_y: s64, csd_size: s32, parent: *Window, background_color_rgb: [3]float) -> bool
+    window_x: s64, window_y: s64, parent: *Window, background_color_rgb: [3]float) -> bool
 {
     wl_check_usage(display, parent);
 
@@ -575,7 +589,7 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
     w: *Wayland_Window = window;
 
     w.display = d;
-    w.csd_size = ifx csd_size > 0 then csd_size else 0;
+    w.csd_size = 0;
 
     w.title = copy_string(window_name);
 
@@ -611,7 +625,7 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
 
     if d.decoration_manager {
         w.decoration = zxdg_decoration_manager_v1.get_toplevel_decoration(d.decoration_manager, w.x_toplevel);
-        zxdg_toplevel_decoration_v1.set_mode(w.decoration, zxdg_toplevel_decoration_v1.mode_client_side);
+        zxdg_toplevel_decoration_v1.set_mode(w.decoration, zxdg_toplevel_decoration_v1.mode_server_side);
     }
 
     if d.fractional_scale_manager {
@@ -654,8 +668,48 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
     bw.maximize_window            = wl_maximize_window;
     bw.set_cursor_from_theme      = wl_set_cursor_from_theme;
     bw.get_dpi_scaling_factor     = wl_get_dpi_scaling_factor;
+    bw.enable_csd                 = wl_enable_csd;
+    bw.disable_csd                = wl_disable_csd;
 
     return true;
+}
+
+wl_enable_csd :: (w: *Window, border_size: s32, title_size: s32) -> bool {
+    ww : *Wayland_Window = w;
+
+    if ww.decoration {
+        zxdg_toplevel_decoration_v1.set_mode(ww.decoration, zxdg_toplevel_decoration_v1.mode_client_side);
+    }
+
+    ww.csd_size = ifx border_size > 0 then border_size else 0;
+    ww.csd_title_size = ifx title_size > 0 then title_size else 0;
+
+    window_calculate_buffer_size(ww);
+    window_update_csd_rects(ww);
+
+    xdg_surface.set_window_geometry(ww.x_surface, ww.csd_size, ww.csd_size, ww.window_width, ww.window_height);
+    wl_surface.damage_buffer(ww.handle, 0, 0, ww.buffer_width, ww.buffer_height);
+    wl_surface.commit(ww.handle);
+
+    return true;
+}
+
+wl_disable_csd :: (w: *Window) {
+    ww : *Wayland_Window = w;
+
+    if ww.decoration {
+        zxdg_toplevel_decoration_v1.set_mode(ww.decoration, zxdg_toplevel_decoration_v1.mode_server_side);
+    }
+
+    ww.csd_size = 0;
+    ww.csd_title_size = 0;
+
+    window_calculate_buffer_size(ww);
+    window_update_csd_rects(ww);
+
+    xdg_surface.set_window_geometry(ww.x_surface, ww.csd_size, ww.csd_size, ww.window_width, ww.window_height);
+    wl_surface.damage_buffer(ww.handle, 0, 0, ww.buffer_width, ww.buffer_height);
+    wl_surface.commit(ww.handle);
 }
 
 wl_set_icon_from_raw_data :: (window: *Window, data: *u8, w: u32, h: u32) {

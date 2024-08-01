@@ -110,6 +110,14 @@ toggle_fullscreen :: (hwnd: HWND, desire_fullscreen: bool, saved: *Saved_Window_
     }
 }
 
+enable_client_side_decorations :: (win: Window_Type, border_size: s32, title_size: s32) -> bool {
+    return false;
+}
+
+disable_client_side_decorations :: (win: Window_Type) {
+    /* NOOP */
+}
+
 // WINDOWED_STYLE   : s32 : WS_VISIBLE | WS_CAPTION | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_SIZEBOX;
 WINDOWED_STYLE         : u32 : WS_OVERLAPPEDWINDOW;
 FULLSCREEN_STYLE       : u32 : WS_VISIBLE | WS_POPUP;
