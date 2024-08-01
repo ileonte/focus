@@ -102,7 +102,7 @@ EGL_Lib :: struct {
             RED_SIZE, 8,
             GREEN_SIZE, 8,
             BLUE_SIZE, 8,
-            // ALPHA_SIZE, 8,                   // this makes the entire window translucent
+            ALPHA_SIZE, 8,
             RENDERABLE_TYPE, OPENGL_BIT,
             NONE
         ];

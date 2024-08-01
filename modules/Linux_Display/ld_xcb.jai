@@ -217,7 +217,7 @@ xcb_init_display :: (display: *Display) -> bool {
 }
 
 xcb_create_window :: (display: *Display, window: *Window, width: int, height: int, window_name: string,
-    window_x: int, window_y: int, parent: *Window, background_color_rgb: [3]float) -> bool
+    window_x: int, window_y: int, csd_size: s32, parent: *Window, background_color_rgb: [3]float) -> bool
 {
     xd : *XCB_Display = display;
 

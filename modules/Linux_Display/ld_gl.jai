@@ -399,8 +399,7 @@ Wayland_EGL_Ops :: GL_Ops.{
         wgl.egl.native = wl_egl_window_create(ww.handle, ww.buffer_width, ww.buffer_height);
         wgl.egl.surface = EGL.CreateWindowSurface(dgl.egl.dpy, dgl.egl.cnf, wgl.egl.native, null);
         EGL.MakeCurrent(dgl.egl.dpy, wgl.egl.surface, wgl.egl.surface, dgl.egl.ctx);
-        wl_window_resize_viewport(ww);
-        wl_surface.damage(ww.handle, 0, 0, ww.window_width, ww.window_height);
+        wl_surface.damage_buffer(ww.handle, 0, 0, ww.buffer_width, ww.buffer_height);
         wl_surface.commit(ww.handle);
     },
 

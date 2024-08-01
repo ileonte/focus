@@ -91,9 +91,45 @@ refresh_cursor :: (w: *Wayland_Window) {
     wl_pointer.set_cursor(
         w.display.pointer,
         w.enter_serial,
-        w.cursor.surfaces[0],
-        xx w.cursor.native.images[0].hotspot_x,
-        xx w.cursor.native.images[0].hotspot_y);
+        w.actual_cursor.surfaces[0],
+        xx w.actual_cursor.native.images[0].hotspot_x,
+        xx w.actual_cursor.native.images[0].hotspot_y);
+}
+
+refresh_cursor :: (w: *Wayland_Window, native_x: wl_fixed_t, native_y: wl_fixed_t) {
+    w.mouse_x, w.mouse_y = wl_fixed_to_int(native_x), wl_fixed_to_int(native_y);
+
+    p := Point.{w.mouse_x, w.mouse_y};
+
+    if w.csd_size > 0 {
+        if point_in_rectangle(w.mouse_x, w.mouse_y, w.client_area) {
+            w.actual_cursor = *w.cursor;
+        } else {
+            sys_cursor_name := "default";
+
+            if point_in_rectangle(p, w.csd_title)
+                sys_cursor_name = "default";
+
+            if point_in_rectangle(p, w.csd_top_left) || point_in_rectangle(p, w.csd_bottom_right)
+                sys_cursor_name = "nwse-resize";
+            if point_in_rectangle(p, w.csd_top_right) || point_in_rectangle(p, w.csd_bottom_left)
+                sys_cursor_name = "nesw-resize";
+            if point_in_rectangle(p, w.csd_top) || point_in_rectangle(p, w.csd_bottom)
+                sys_cursor_name = "ns-resize";
+            if point_in_rectangle(p, w.csd_left) || point_in_rectangle(p, w.csd_right)
+                sys_cursor_name = "ew-resize";
+
+            cursor, found := table_find(*w.display.cursors, sys_cursor_name);
+            if found {
+                w.actual_cursor = *w.system_cursor;
+                if w.system_cursor.name != cursor.name {
+                    w.system_cursor = cursor;
+                }
+            }
+        }
+    }
+
+    refresh_cursor(w);
 }
 
 pointer_listener :: wl_pointer_listener.{
@@ -105,7 +141,7 @@ pointer_listener :: wl_pointer_listener.{
             d: *Wayland_Display = wl_proxy_get_user_data(self);
             d.current_hovered_window = wl_surface.get_user_data(surface);
             d.current_hovered_window.enter_serial = serial;
-            refresh_cursor(d.current_hovered_window);
+            refresh_cursor(d.current_hovered_window, surface_x, surface_y);
         }
     },
 
@@ -118,11 +154,7 @@ pointer_listener :: wl_pointer_listener.{
         ctx: Context;
         push_context ctx {
             d: *Wayland_Display = wl_proxy_get_user_data(self);
-            if d.current_hovered_window != null {
-                m_x := wl_fixed_to_int(fx);
-                m_y := wl_fixed_to_int(fy);
-                d.current_hovered_window.mouse_x, d.current_hovered_window.mouse_y = window_scale_coords(d.current_hovered_window, m_x, m_y);
-            }
+            if d.current_hovered_window != null  refresh_cursor(d.current_hovered_window, fx, fy);
         }
     },
 
@@ -137,6 +169,60 @@ pointer_listener :: wl_pointer_listener.{
             case BTN_RIGHT;  event.key_code = .MOUSE_BUTTON_RIGHT;
         }
         if state == wl_pointer.button_state_pressed {
+            w := d.current_hovered_window;
+
+            if w != null && w.csd_size > 0 {
+                p := Point.{w.mouse_x, w.mouse_y};
+
+                if button == {
+                    case BTN_LEFT; {
+                        if point_in_rectangle(p, w.csd_title) {
+                            xdg_toplevel.move(w.x_toplevel, d.seat, serial);
+                            return;
+                        }
+                        if point_in_rectangle(p, w.csd_top_left) {
+                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_top_left);
+                            return;
+                        }
+                        if point_in_rectangle(p, w.csd_top) {
+                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_top);
+                            return;
+                        }
+                        if point_in_rectangle(p, w.csd_top_right) {
+                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_top_right);
+                            return;
+                        }
+                        if point_in_rectangle(p, w.csd_right) {
+                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_right);
+                            return;
+                        }
+                        if point_in_rectangle(p, w.csd_bottom_right) {
+                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_bottom_right);
+                            return;
+                        }
+                        if point_in_rectangle(p, w.csd_bottom) {
+                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_bottom);
+                            return;
+                        }
+                        if point_in_rectangle(p, w.csd_bottom_left) {
+                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_bottom_left);
+                            return;
+                        }
+                        if point_in_rectangle(p, w.csd_left) {
+                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_left);
+                            return;
+                        }
+                    }
+
+                    case BTN_RIGHT; {
+                        if point_in_rectangle(p, w.csd_title) {
+                            xdg_toplevel.show_window_menu(w.x_toplevel, d.seat, serial, p.x, p.y);
+                            return;
+                        }
+                    }
+                }
+            }
+
             event.key_pressed = 1;
             d.base.input_button_states[event.key_code] = (Input.Key_Current_State.START | Input.Key_Current_State.DOWN);
         } else {

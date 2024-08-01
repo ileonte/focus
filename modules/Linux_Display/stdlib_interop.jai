@@ -17,14 +17,16 @@ active_gl_backend :: inline () -> GL_BACKEND {
     return active_gl_backend(global_display);
 }
 
-create_window :: inline (width: int, height: int, window_name: string, window_x := 0, window_y := 0,
-    parent: *Window = INVALID_WINDOW, background_color_rgb: [3]float) -> *Window
+create_window :: inline (width: int, height: int, window_name: string,
+    window_x := 0, window_y := 0, csd_size: s32 = 0, parent: *Window = INVALID_WINDOW,
+    background_color_rgb: [3]float) -> *Window
 {
     return create_window(
         global_display,
         width, height,
         window_name,
         window_x, window_y,
+        csd_size,
         parent,
         background_color_rgb);
 }

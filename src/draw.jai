@@ -1,11 +1,23 @@
+needs_csd := OS == .LINUX;
+csd_size : s32 = 12;
+csd_corner_radius : s32 = 8;
+
 draw_frame :: () {
     {
-        c := map_color_to_vec4(Color.BACKGROUND_1);
+        // c := map_color_to_vec4(Color.BACKGROUND_1);
+        c := Vector4.{0, 0, 0, 0};
         Simp.clear_render_target(c.x, c.y, c.z, c.w);
     }
     if !is_valid(screen) || screen.w < MIN_WINDOW_WIDTH || screen.h < MIN_WINDOW_HEIGHT return;
 
-    maybe_set_hot_or_active(.none, screen, .NORMAL);
+    client_area := screen;
+    if needs_csd {
+        client_area = shrink(client_area, cast(float) csd_size);
+        draw_rounded_rect_with_shadow(client_area, map_color_to_vec4(Color.BACKGROUND_1),
+            cast(float) csd_corner_radius, cast(float) csd_size);
+    }
+
+    maybe_set_hot_or_active(.none, client_area, .NORMAL);
 
     // Check whether we need to deactivate elements before drawing
     if (!mouse.left.is_down || mouse.left.just_released) && (!mouse.middle.is_down || mouse.middle.just_released) then ui.active = .none;
@@ -18,12 +30,12 @@ draw_frame :: () {
     if #complete editors.layout == {
         case .None;
             editors_snap_splitter(0.5);
-            draw_welcome_screen(screen);
+            draw_welcome_screen(client_area);
 
         case .Single;
             editors_snap_splitter(0.5);
-            draw_editor(editors.left, screen, status_bar_height, .editor_single);
-            active_pane_rect = screen;
+            draw_editor(editors.left, client_area, status_bar_height, .editor_single);
+            active_pane_rect = client_area;
 
         case .Double;
             // Drag splitter
@@ -42,8 +54,8 @@ draw_frame :: () {
                 if editors.active == editors.right && !values_are_close(splitter_anim.target, 0.1) then editors_start_moving_splitter(0.1);
             }
 
-            split_x := screen.w * splitter_pos;
-            left_rect, right_rect := cut_left(screen, split_x, margin = 2);
+            split_x := client_area.w * splitter_pos;
+            left_rect, right_rect := cut_left(client_area, split_x, margin = 2);
 
             if just_dropped_file {
                 if mouse_pointer_is_within(left_rect)  then editors_open_file(just_dropped_file, .left);
@@ -78,7 +90,7 @@ draw_frame :: () {
         case .language_dialog;          draw_language_dialog();
     }
 
-    draw_user_messages(screen, status_bar_height);
+    draw_user_messages(client_area, status_bar_height);
 
     // Reset UI state after drawing
     if (!mouse.left.is_down || mouse.left.just_released) && (!mouse.middle.is_down || mouse.middle.just_released) {
@@ -3261,7 +3273,7 @@ draw_code :: (font: *Simp.Dynamic_Font, pen: Vector2, code_lines: [] Simp.Code_L
 
 Corner_Rounding :: enum { none; in; out; }
 
-draw_rounded_rect :: (rect: Rect, color: Color, radius := 0.0, softness := 1.0, $set_shader := true) {
+draw_rounded_rect :: (rect: Rect, color: Vector4, radius := 0.0, softness := 1.0, $set_shader := true) {
     if !is_valid(rect) return;
     #if set_shader then Simp.set_shader_for_rects();
     if radius <= 0 then radius = rounding_radius;
@@ -3271,7 +3283,11 @@ draw_rounded_rect :: (rect: Rect, color: Color, radius := 0.0, softness := 1.0, 
     p0 := bottom_left(rect);
     p2 := top_right(rect);
 
-    Simp.immediate_rounded_rect(p0, p2, map_color_to_vec4(color), center, size, radius, softness);
+    Simp.immediate_rounded_rect(p0, p2, color, center, size, radius, softness);
+}
+
+draw_rounded_rect :: (rect: Rect, color: Color, radius := 0.0, softness := 1.0, $set_shader := true) #expand {
+    draw_rounded_rect(rect, map_color_to_vec4(color), radius, softness, set_shader);
 }
 
 draw_rounded_rect_with_raw_color :: (rect: Rect, color_vec4: Vector4, radius := 0.0, softness := 1.0, $set_shader := true) {
@@ -3352,7 +3368,7 @@ draw_rounded_rect_with_corners :: (rect: Rect, color: Color,
     draw_rect_with_raw_color(bottom, color_vec4);
 }
 
-draw_rounded_rect_with_shadow :: (rect: Rect, color: Color, radius := 0.0, shadow_size := 0.0) {
+draw_rounded_rect_with_shadow :: (rect: Rect, color: Vector4, radius := 0.0, shadow_size := 0.0) {
     if radius <= 0 then radius = rounding_radius;
     if shadow_size <= 0 then shadow_size = char_x_advance * 2;
     shadow_rect := expand(rect, shadow_size);
@@ -3376,6 +3392,10 @@ draw_rounded_rect_with_shadow :: (rect: Rect, color: Color, radius := 0.0, shado
     Simp.immediate_rounded_rect(bottom_left(right),  top_right(right),  shadow_color, center, size, radius, softness = shadow_size);
 
     draw_rounded_rect(rect, color, radius = radius, set_shader = false);
+}
+
+draw_rounded_rect_with_shadow :: (rect: Rect, color: Color, radius := 0.0, shadow_size := 0.0) #expand {
+    draw_rounded_rect_with_shadow(rect, map_color_to_vec4(color), radius, shadow_size);
 }
 
 draw_circle :: (center: Vector2, color: Color, radius: float, softness := 1.0) {

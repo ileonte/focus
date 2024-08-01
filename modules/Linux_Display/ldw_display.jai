@@ -49,9 +49,7 @@ Wayland_Display :: struct {
     clipboard_source: *wl_data_source;
     clipboard_send_data: string;
 
-    viewporter: *wp_viewporter;
     fractional_scale_manager: *wp_fractional_scale_manager_v1;
-
     fixed_scaling: bool;
     scale_factor_override: s32;
 
@@ -84,7 +82,9 @@ Wayland_Window :: struct {
     buffer_width: s32;
     buffer_height: s32;
 
-    cursor: WLCursor;
+    actual_cursor: *WLCursor;  // currently active cursor, may be a "system" selected one when CSD are used
+    cursor: WLCursor;          // user-requested cursor
+    system_cursor: WLCursor;   // system-selected cursor for CSD
     mouse_x: s32;
     mouse_y: s32;
 
@@ -98,13 +98,24 @@ Wayland_Window :: struct {
 
     fractional_scale_proxy: *wp_fractional_scale_v1;
     fractional_scale: s32 = 120;
-    viewport: *wp_viewport;
 
     // dumb stuff
     pre_configure_desired_state: WLDesiredPreconfigureState;
 
     initial_max_width: s32;
     initial_max_height: s32;
+
+    csd_size: s32;
+    client_area      : Rect;
+    csd_title        : Rect;
+    csd_top_left     : Rect;
+    csd_top          : Rect;
+    csd_top_right    : Rect;
+    csd_right        : Rect;
+    csd_bottom_right : Rect;
+    csd_bottom       : Rect;
+    csd_bottom_left  : Rect;
+    csd_left         : Rect;
 }
 
 wl_init_display :: (display: *Display) -> bool {
@@ -143,7 +154,7 @@ wl_init_display :: (display: *Display) -> bool {
             image := native.images[it];
             buffer := wl_cursor_image_get_buffer(image);
             wl_surface.attach(surface, buffer, 0, 0);
-            wl_surface.damage(surface, 0, 0, xx image.width, xx image.height);
+            wl_surface.damage_buffer(surface, 0, 0, xx image.width, xx image.height);
             wl_surface.commit(surface);
             array_add(*cursor.surfaces, surface);
         }
@@ -194,28 +205,14 @@ WLNativeWindowState :: enum_flags {
     xdg_toplevel_configured;
 }
 
-window_scale_coords :: inline (w: *Wayland_Window, x: s32, y: s32) -> (s32, s32) {
-    fractional_scale := ifx w.display.fixed_scaling then w.display.scale_factor_override else w.fractional_scale;
-
-    scaled_x : s32 = x * fractional_scale;
-    ret_x : s32 = scaled_x / 120 + ifx (scaled_x % 120) < 60 then cast(s32) 0 else 1;
-
-    scaled_y : s32 = y * fractional_scale;
-    ret_y : s32 = scaled_y / 120 + ifx (scaled_y % 120) < 60 then cast(s32) 0 else 1;
-
-    return ret_x, ret_y;
-}
-
 window_calculate_buffer_size :: inline (w: *Wayland_Window) {
-    w.buffer_width, w.buffer_height = window_scale_coords(w, w.window_width, w.window_height);
-}
+    scaled_x : s32 = w.window_width;
+    if w.csd_size > 0  scaled_x += 2 * w.csd_size;
+    w.buffer_width = scaled_x;
 
-wl_window_resize_viewport :: (w: *Wayland_Window) {
-    // f0 :: #run wl_fixed_from_int(0);
-    // wp_viewport.set_source(w.viewport, f0, f0, wl_fixed_from_int(w.buffer_width), wl_fixed_from_int(w.buffer_height));
-    fm1 :: #run wl_fixed_from_int(-1);
-    wp_viewport.set_source(w.viewport, fm1, fm1, fm1, fm1); // this is some bullshit
-    wp_viewport.set_destination(w.viewport, w.window_width, w.window_height);
+    scaled_y : s32 = w.window_height;
+    if w.csd_size > 0  scaled_y += 2 * w.csd_size;
+    w.buffer_height = scaled_y;
 }
 
 wm_base_listener :: xdg_wm_base_listener.{
@@ -266,9 +263,6 @@ registry_listener :: wl_registry_listener.{
             case "wl_data_device_manager"; {
                 wl_jext_bind(*d.data_device_manager, registry, id, version);
                 maybe_init_data_device(d);
-            }
-            case "wp_viewporter"; {
-                wl_jext_bind(*d.viewporter, registry, id, version);
             }
             case "wp_fractional_scale_manager_v1"; {
                 wl_jext_bind(*d.fractional_scale_manager, registry, id, version);
@@ -513,16 +507,24 @@ x_toplevel_listener :: xdg_toplevel_listener.{
 };
 
 wl_window_handle_resize :: (w: *Wayland_Window, width: s32, height: s32) {
+    configured :: WLNativeWindowState.xdg_configured | .xdg_toplevel_configured;
+
+    if width == w.window_width && height == w.window_height return;
+    if !(w.native_state && configured) return;
+
     w.window_width  = ifx !width then w.creation_width else width;
     w.window_height = ifx !height then w.creation_height else height;
 
     window_calculate_buffer_size(w);
-    wl_window_resize_viewport(w);
+    window_update_csd_rects(w);
 
     if w.base.gl.egl.native
         wl_egl_window_resize(w.base.gl.egl.native, w.buffer_width, w.buffer_height, 0, 0);
 
-    wl_surface.damage(w.handle, 0, 0, w.window_width, w.window_height);
+    if w.csd_size > 0 {
+        xdg_surface.set_window_geometry(w.x_surface, w.csd_size, w.csd_size, w.window_width, w.window_height);
+    }
+    wl_surface.damage_buffer(w.handle, 0, 0, w.buffer_width, w.buffer_height);
     wl_surface.commit(w.handle);
 
     Input.add_resize_record(xx w, xx w.buffer_width, xx w.buffer_height);
@@ -547,8 +549,25 @@ fractional_scale_listener :: wp_fractional_scale_v1_listener.{
     }
 };
 
+window_update_csd_rects :: (w: *Wayland_Window) {
+    if w.csd_size > 0 {
+        max_x := w.csd_size + w.window_width;
+        max_y := w.csd_size + w.window_height;
+
+        w.client_area      = Rect.{w.csd_size,  w.csd_size, w.window_width, w.window_height};
+        w.csd_top_left     = Rect.{0,           0,          w.csd_size,     w.csd_size     };
+        w.csd_top          = Rect.{w.csd_size,  0,          w.window_width, w.csd_size     };
+        w.csd_top_right    = Rect.{max_x,       0,          w.csd_size,     w.csd_size     };
+        w.csd_right        = Rect.{max_x,       w.csd_size, w.csd_size,     w.window_height};
+        w.csd_bottom_right = Rect.{max_x,       max_y,      w.csd_size,     w.csd_size     };
+        w.csd_bottom       = Rect.{w.csd_size,  max_y,      w.window_width, w.csd_size     };
+        w.csd_bottom_left  = Rect.{0,           max_y,      w.csd_size,     w.csd_size     };
+        w.csd_left         = Rect.{0,           w.csd_size, w.csd_size,     w.window_height};
+    }
+}
+
 wl_create_window :: (display: *Display, window: *Window, width: int, height: int, window_name: string,
-    window_x: s64, window_y: s64, parent: *Window, background_color_rgb: [3]float) -> bool
+    window_x: s64, window_y: s64, csd_size: s32, parent: *Window, background_color_rgb: [3]float) -> bool
 {
     wl_check_usage(display, parent);
 
@@ -556,6 +575,7 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
     w: *Wayland_Window = window;
 
     w.display = d;
+    w.csd_size = ifx csd_size > 0 then csd_size else 0;
 
     w.title = copy_string(window_name);
 
@@ -573,6 +593,8 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
         }
     }
     w.cursor = cursor;
+    w.system_cursor = cursor;
+    w.actual_cursor = *w.cursor;
 
     w.handle = wl_compositor.create_surface(d.compositor);
     wl_proxy_set_user_data(w.handle, w);
@@ -589,17 +611,15 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
 
     if d.decoration_manager {
         w.decoration = zxdg_decoration_manager_v1.get_toplevel_decoration(d.decoration_manager, w.x_toplevel);
-        zxdg_toplevel_decoration_v1.set_mode(w.decoration, zxdg_toplevel_decoration_v1.mode_server_side);
+        zxdg_toplevel_decoration_v1.set_mode(w.decoration, zxdg_toplevel_decoration_v1.mode_client_side);
     }
 
-    w.viewport = wp_viewporter.get_viewport(d.viewporter, w.handle);
     if d.fractional_scale_manager {
         w.fractional_scale_proxy = wp_fractional_scale_manager_v1.get_fractional_scale(
             d.fractional_scale_manager, w.handle);
         wp_fractional_scale_v1.add_listener(w.fractional_scale_proxy, *fractional_scale_listener, w);
     }
 
-    wl_surface.damage(w.handle, 0, 0, w.window_width, w.window_height);
     wl_surface.commit(w.handle);
 
     configured :: WLNativeWindowState.xdg_configured | .xdg_toplevel_configured;
@@ -611,8 +631,13 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
         w.window_width = min(w.window_width, w.initial_max_width - 10);
         w.window_height = min(w.window_height, w.initial_max_height - 10);
     }
+
     window_calculate_buffer_size(w);
-    wl_window_resize_viewport(w);
+    window_update_csd_rects(w);
+
+    xdg_surface.set_window_geometry(w.x_surface, w.csd_size, w.csd_size, w.window_width, w.window_height);
+    wl_surface.damage_buffer(w.handle, 0, 0, w.buffer_width, w.buffer_height);
+    wl_surface.commit(w.handle);
 
     bw: *Base_Window = window;
     bw.type    = Wayland_Window;

@@ -37,6 +37,15 @@ ACTIVE_BACKEND :: enum {
     XCB;
 }
 
+Point :: struct {
+    x, y: s32;
+}
+
+Rect :: struct {
+    x, y: s32;
+    w, h: s32;
+}
+
 
 init_display :: (display: *Display, desired_backend := BACKEND_CHOICE.PREFER_BEST_USER_EXPERIENCE, desired_gl_backend := GL_BACKEND_CHOICE.AUTOSELECT, flags: Init_Flags = 0, app_id := "com.jai.application") -> bool {
     timers_init();
@@ -132,13 +141,17 @@ active_gl_backend :: (display: *Display) -> GL_BACKEND {
 /*
  * Window functions
  */
-create_window :: inline (display: *Display, width: int, height: int, window_name: string, window_x := 0, window_y := 0,
-    parent: *Window = INVALID_WINDOW, background_color_rgb: [3]float) -> *Window
+create_window :: inline (display: *Display, width: int, height: int, window_name: string,
+    window_x := 0, window_y := 0, csd_size: s32 = 0, parent: *Window = INVALID_WINDOW,
+    background_color_rgb: [3]float) -> *Window
 {
     bd: *Base_Display = display;
     ret := array_add(*bd.windows);
     ret.* = .{};
-    if !bd.create_window(display, ret, width, height, window_name, window_x, window_y, parent, background_color_rgb) {
+    ok := bd.create_window(display, ret, width, height, window_name,
+        window_x, window_y, csd_size,
+        parent, background_color_rgb);
+    if !ok {
         pop(*bd.windows);
         return INVALID_WINDOW;
     }
@@ -379,6 +392,7 @@ Base_Display :: struct {
         width: int, height: int,
         window_name: string,
         window_x := 0, window_y := 0,
+        csd_size: s32 = 0,
         parent: *Window = null,
         background_color_rgb: [3]float) -> bool;
 
@@ -459,4 +473,16 @@ WHEEL_DELTA : s32 : 120;
 consume_loop_wakeup_event :: (bd: *Base_Display) {
     val: u64;
     read(bd.loop_wakeup_event, *val, size_of(type_of(val)));
+}
+
+rect_is_valid :: inline (r: Rect) -> bool #c_call {
+    return r.w > 0 && r.h > 0;
+}
+
+point_in_rectangle :: inline (x: s32, y: s32, r: Rect) -> bool #c_call {
+    return rect_is_valid(r) && x >= r.x && x < (r.x + r.w) && y >= r.y && y < (r.y + r.h);
+}
+
+point_in_rectangle :: inline (p: Point, r: Rect) -> bool #c_call {
+    return point_in_rectangle(p.x, p.y, r);
 }

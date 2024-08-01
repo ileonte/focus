@@ -452,7 +452,7 @@ draw_generated_quads :: (font: *Dynamic_Font, color: u8) {
 
     set_shader_for_text();
 
-    glBlendFunc(GL_SRC1_COLOR, GL_ONE_MINUS_SRC1_COLOR);
+    glBlendFuncSeparate(GL_SRC1_COLOR, GL_ONE_MINUS_SRC1_COLOR, GL_ONE, GL_DST_ALPHA);
     glEnable(GL_BLEND);
 
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, 0);
@@ -728,7 +728,7 @@ backend_update_texture :: (texture: *Texture, bitmap: *Bitmap) {
 
 backend_use_shader :: (s: *Shader) {
     if s.alpha_blend {
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ONE, GL_DST_ALPHA);
         glEnable(GL_BLEND);
     } else {
         glDisable(GL_BLEND);
