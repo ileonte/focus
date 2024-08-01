@@ -124,6 +124,22 @@ main :: () {
         session = start_fresh_session();
     }
 
+    window_x, window_y, window_width, window_height = platform_get_centered_window_dimensions(config.settings.open_on_the_biggest_monitor);
+
+    if config.settings.window_width  > 0 then window_width  = xx config.settings.window_width;
+    if config.settings.window_height > 0 then window_height = xx config.settings.window_height;
+    if config.settings.window_x != -1000 then window_x      = xx config.settings.window_x;
+    if config.settings.window_y != -1000 then window_y      = xx config.settings.window_y;
+
+    window_generic_title = ifx DEBUG then "Focus (debug mode)" else "Focus";
+    platform_create_window();
+    if config.settings.use_system_window_decorations {
+        WC.disable_client_side_decorations(window);
+    } else {
+        if !WC.enable_client_side_decorations(window, csd_size, 30)
+            log("Failed to enable client-side decorations");
+    }
+
     if project_config.loaded then update_window_title();
 
     init_workspace();
@@ -530,7 +546,7 @@ init_fonts_and_dependent_things :: () {
 }
 
 update_mouse_state :: () {
-    x, y := get_mouse_pointer_position(window, false);
+    x, y := WC.get_mouse_pointer_position(window, false);
     mouse.pointer.x = xx x;
     mouse.pointer.y = xx (window_height - y);
     mouse.moved_this_frame = (mouse.pointer != mouse.previous_position);
@@ -581,7 +597,7 @@ update_mouse_state :: () {
 
 editor_toggle_fullscreen :: () {
     fullscreen = !fullscreen;
-    toggle_fullscreen(window, fullscreen, *fullscreen_state);  // platform-specific
+    WC.toggle_fullscreen(window, fullscreen, *fullscreen_state);  // platform-specific
 }
 
 open_another_editor_instance :: () {
@@ -699,7 +715,7 @@ themes_dir:   string;
 
 focus_executable_args: [] string;
 
-window: Window_Type;
+window: WC.Window_Type;
 window_generic_title: string = ---;
 window_width  := 0;
 window_height := 0;
@@ -708,7 +724,7 @@ window_y  := -1;
 dpi_scale := 1.0;
 
 fullscreen: bool;
-fullscreen_state: Saved_Window_Info;
+fullscreen_state: WC.Saved_Window_Info;
 
 redraw_requested            := true;  // set to true to render the first frame
 should_quit                 := false;
@@ -967,7 +983,7 @@ using Basic :: #import "Basic"()(MEMORY_DEBUGGER = DEBUG);
 #import "Simple_Bucket_Array";
 #import "Thread";
 #import "Unicode";
-#import "Window_Creation";
+WC :: #import "Window_Creation";
 #import "Hash_Table";
 
 re   :: #import "uniform";

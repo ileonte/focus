@@ -39,15 +39,15 @@ platform_create_window :: inline () {
     platform_set_border_color();
 }
 
-platform_maximize_window :: inline (window: Window_Type) {
+platform_maximize_window :: inline (window: WC.Window_Type) {
     NSWindow.maximize(window);
 }
 
-platform_enable_drag_and_drop :: inline (window: Window_Type) {
+platform_enable_drag_and_drop :: inline (window: WC.Window_Type) {
     NSView.registerForDraggedTypes(window, NSArray(NSPasteboardType).arrayWithObject(NSPasteboardTypeFileURL));
 }
 
-platform_get_dpi_scale :: (window: Window_Type) -> float {
+platform_get_dpi_scale :: (window: WC.Window_Type) -> float {
     return xx NSView.convertPointToBacking(NSWindow.contentView(window), .{1, 0}).x;
 }
 
@@ -73,12 +73,12 @@ platform_wake_up_main_thread :: () {
     NSApplication.postEvent(NSApp, nsev, YES);
 }
 
-platform_set_refresh_timer :: inline (window: Window_Type) {
+platform_set_refresh_timer :: inline (window: WC.Window_Type) {
     destroy_timer(platform_timer);
     platform_timer = create_timer(50, true);
 }
 
-platform_kill_refresh_timer :: inline (window: Window_Type) {
+platform_kill_refresh_timer :: inline (window: WC.Window_Type) {
     destroy_timer(platform_timer);
     platform_timer = null;
 }

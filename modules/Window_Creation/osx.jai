@@ -191,6 +191,14 @@ get_mouse_pointer_position :: inline (right_handed := false) -> x: int, y: int, 
     return x, y, success;
 }
 
+enable_client_side_decorations :: (win: Window_Type, border_size: s32, title_size: s32) -> bool {
+    return false;
+}
+
+disable_client_side_decorations :: (win: Window_Type) {
+    /* NOOP */
+}
+
 #scope_file
 
 macos_create_app_delegate_exists :: () -> bool { // :DecoupleWindowCreationAndInput:

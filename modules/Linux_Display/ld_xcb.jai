@@ -217,7 +217,7 @@ xcb_init_display :: (display: *Display) -> bool {
 }
 
 xcb_create_window :: (display: *Display, window: *Window, width: int, height: int, window_name: string,
-    window_x: int, window_y: int, csd_size: s32, parent: *Window, background_color_rgb: [3]float) -> bool
+    window_x: int, window_y: int, parent: *Window, background_color_rgb: [3]float) -> bool
 {
     xd : *XCB_Display = display;
 
@@ -235,6 +235,8 @@ xcb_create_window :: (display: *Display, window: *Window, width: int, height: in
     xw.base.maximize_window            = xcb_maximize_window;
     xw.base.set_cursor_from_theme      = xcb_set_cursor_from_theme;
     xw.base.get_dpi_scaling_factor     = xcb_get_dpi_scaling_factor;
+    xw.base.enable_csd                 = xcb_enable_csd;
+    xw.base.disable_csd                = xcb_disable_csd;
 
     event_mask := xcb_event_mask_t.EXPOSURE | .STRUCTURE_NOTIFY | .FOCUS_CHANGE | .ENTER_WINDOW | .LEAVE_WINDOW;
     if !xd.xi_initialized event_mask |= .KEY_PRESS | .KEY_RELEASE | .BUTTON_PRESS | .BUTTON_RELEASE;
@@ -308,6 +310,14 @@ xcb_create_window :: (display: *Display, window: *Window, width: int, height: in
     window.xcb = xw;
 
     return true;
+}
+
+xcb_enable_csd :: (w: *Window, border_size: s32, title_size: s32) -> bool {
+    return false;
+}
+
+xcb_disable_csd :: (w: *Window) {
+    /* NOOP */
 }
 
 xcb_set_fixed_scaling :: (display: *Display, factor: float) {

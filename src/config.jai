@@ -607,6 +607,8 @@ Settings :: struct {
     status_bar_position                           := Status_Bar_Position.bottom;
     color_preview_popup                           := Color_Preview_Popup.enabled;
 
+    use_system_window_decorations                 := true;
+
     // TODO
     // convert_tabs_to_spaces_on_load:     false
     // load_last_session_on_start:         true

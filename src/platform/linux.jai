@@ -138,46 +138,52 @@ platform_create_window :: () {
         window_width, window_height,
         window_generic_title,
         window_x, window_y,
-        csd_size,
         background_color_rgb = color_as_3_floats(Color.BACKGROUND_0),
     );
 
-    if LD.active_backend() != .WAYLAND {
-        data := icon_data.png_data;
-
-        width: s32;
-        height: s32;
-        n_chan: s32;
-        raw_pixels := stbi_load_from_memory(data.data, xx data.count, *width, *height, *n_chan, 4);
-        assert(raw_pixels != null, "Failed to parse PNG data!");
-        assert(icon_data.width == width && icon_data.height == height && icon_data.n_chan == n_chan,
-               "Missmatch between recorded icon data and PNG load result: (%, %, %) vs (%, %, %)",
-               icon_data.width, icon_data.height, icon_data.n_chan,
-               width, height, n_chan);
-
-        size := width * height;
-        pixels := cast(*u32) raw_pixels;
-        for 0..size - 1 {
-            v := pixels[it];
-            pixels[it] = (v & 0xff000000) | ((v & 0x00ff0000) >> 16) | (v & 0x0000ff00) | ((v & 0x000000ff) << 16);
+    if LD.active_backend() == {
+        case .WAYLAND; {
+            if !LD.enable_client_side_decorations(window, csd_size, 0)
+                log("WAYLAND: failed to enable client-side decorations");
         }
 
-        LD.set_icon_from_raw_data(window, raw_pixels, width, height);
+        case; {
+            data := icon_data.png_data;
 
-        stbi_image_free(raw_pixels);
+            width: s32;
+            height: s32;
+            n_chan: s32;
+            raw_pixels := stbi_load_from_memory(data.data, xx data.count, *width, *height, *n_chan, 4);
+            assert(raw_pixels != null, "Failed to parse PNG data!");
+            assert(icon_data.width == width && icon_data.height == height && icon_data.n_chan == n_chan,
+                "Missmatch between recorded icon data and PNG load result: (%, %, %) vs (%, %, %)",
+                icon_data.width, icon_data.height, icon_data.n_chan,
+                width, height, n_chan);
+
+            size := width * height;
+            pixels := cast(*u32) raw_pixels;
+            for 0..size - 1 {
+                v := pixels[it];
+                pixels[it] = (v & 0xff000000) | ((v & 0x00ff0000) >> 16) | (v & 0x0000ff00) | ((v & 0x000000ff) << 16);
+            }
+
+            LD.set_icon_from_raw_data(window, raw_pixels, width, height);
+
+            stbi_image_free(raw_pixels);
+        }
     }
 }
 
-platform_maximize_window :: (window: Window_Type) {
+platform_maximize_window :: (window: WC.Window_Type) {
     LD.maximize_window(window);
 }
 
-platform_enable_drag_and_drop :: (window: Window_Type) {
+platform_enable_drag_and_drop :: (window: WC.Window_Type) {
     typelist := string.["url/url", "text/uri-list", "text/plain", "application/octet-stream"];
     LD.enable_dnd(window, typelist);
 }
 
-platform_get_dpi_scale :: (window: Window_Type) -> float {
+platform_get_dpi_scale :: (window: WC.Window_Type) -> float {
     return LD.get_dpi_scaling_factor(window);
 }
 
@@ -193,11 +199,11 @@ platform_wake_up_main_thread :: () {
     LD.wake_up_event_loop();
 }
 
-platform_set_refresh_timer :: (window: Window_Type) {
+platform_set_refresh_timer :: (window: WC.Window_Type) {
     LD.timer_start(timer, 0, 50);
 }
 
-platform_kill_refresh_timer :: (window: Window_Type) {
+platform_kill_refresh_timer :: (window: WC.Window_Type) {
     LD.timer_stop(timer);
 }
 

@@ -1,8 +1,19 @@
 needs_csd := OS == .LINUX;
 csd_size : s32 = 12;
 csd_corner_radius : s32 = 8;
+csd_enabled := true;
 
 draw_frame :: () {
+    if csd_enabled != config.settings.use_system_window_decorations {
+        if config.settings.use_system_window_decorations {
+            WC.disable_client_side_decorations(window);
+        } else {
+            if !WC.enable_client_side_decorations(window, csd_size, 30)
+                log("Failed to enable client-side decorations");
+        }
+        csd_enabled = config.settings.use_system_window_decorations;
+    }
+
     {
         // c := map_color_to_vec4(Color.BACKGROUND_1);
         c := Vector4.{0, 0, 0, 0};

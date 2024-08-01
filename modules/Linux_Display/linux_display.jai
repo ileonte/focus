@@ -37,15 +37,6 @@ ACTIVE_BACKEND :: enum {
     XCB;
 }
 
-Point :: struct {
-    x, y: s32;
-}
-
-Rect :: struct {
-    x, y: s32;
-    w, h: s32;
-}
-
 
 init_display :: (display: *Display, desired_backend := BACKEND_CHOICE.PREFER_BEST_USER_EXPERIENCE, desired_gl_backend := GL_BACKEND_CHOICE.AUTOSELECT, flags: Init_Flags = 0, app_id := "com.jai.application") -> bool {
     timers_init();
@@ -142,14 +133,14 @@ active_gl_backend :: (display: *Display) -> GL_BACKEND {
  * Window functions
  */
 create_window :: inline (display: *Display, width: int, height: int, window_name: string,
-    window_x := 0, window_y := 0, csd_size: s32 = 0, parent: *Window = INVALID_WINDOW,
+    window_x := 0, window_y := 0, parent: *Window = INVALID_WINDOW,
     background_color_rgb: [3]float) -> *Window
 {
     bd: *Base_Display = display;
     ret := array_add(*bd.windows);
     ret.* = .{};
     ok := bd.create_window(display, ret, width, height, window_name,
-        window_x, window_y, csd_size,
+        window_x, window_y,
         parent, background_color_rgb);
     if !ok {
         pop(*bd.windows);
@@ -236,6 +227,16 @@ get_dpi_scaling_factor :: (window: *Window) -> float {
 set_fixed_scaling :: (display: *Display, factor: float) {
     bd: *Base_Display = display;
     bd.set_fixed_scaling(display, factor);
+}
+
+enable_client_side_decorations :: (window: *Window, border_size: s32, title_size: s32) -> bool {
+    bw: *Base_Window = window;
+    return bw.enable_csd(window, border_size, title_size);
+}
+
+disable_client_side_decorations :: (window: *Window) {
+    bw: *Base_Window = window;
+    bw.disable_csd(window);
 }
 
 /*
@@ -348,6 +349,7 @@ GL :: #import "Linux_Display/GL";   // apparently different from `#import,file "
 #import "Wayland";
 Input :: #import "Input";
 #import "Basic";
+W :: #import "Window_Creation";
 
 #load "missing.jai";
 #load "fontconfig.jai";
@@ -392,7 +394,6 @@ Base_Display :: struct {
         width: int, height: int,
         window_name: string,
         window_x := 0, window_y := 0,
-        csd_size: s32 = 0,
         parent: *Window = null,
         background_color_rgb: [3]float) -> bool;
 
@@ -426,6 +427,8 @@ Base_Window :: struct {
     maximize_window: (window: *Window);
     set_cursor_from_theme: (window: *Window, name: string);
     get_dpi_scaling_factor: (window: *Window) -> float;
+    enable_csd: (window: *Window, border_size: s32, title_size: s32) -> bool;
+    disable_csd: (window: *Window);
 }
 
 #if VALIDATE_USAGE {
@@ -473,16 +476,4 @@ WHEEL_DELTA : s32 : 120;
 consume_loop_wakeup_event :: (bd: *Base_Display) {
     val: u64;
     read(bd.loop_wakeup_event, *val, size_of(type_of(val)));
-}
-
-rect_is_valid :: inline (r: Rect) -> bool #c_call {
-    return r.w > 0 && r.h > 0;
-}
-
-point_in_rectangle :: inline (x: s32, y: s32, r: Rect) -> bool #c_call {
-    return rect_is_valid(r) && x >= r.x && x < (r.x + r.w) && y >= r.y && y < (r.y + r.h);
-}
-
-point_in_rectangle :: inline (p: Point, r: Rect) -> bool #c_call {
-    return point_in_rectangle(p.x, p.y, r);
 }
