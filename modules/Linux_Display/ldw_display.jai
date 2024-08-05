@@ -206,7 +206,7 @@ WLNativeWindowState :: enum_flags {
     xdg_toplevel_configured;
 }
 
-window_calculate_buffer_size :: inline (w: *Wayland_Window) {
+window_calculate_buffer_size :: inline (w: *Wayland_Window) #c_call {
     scaled_x : s32 = w.window_width;
     if w.csd_size > 0  scaled_x += 2 * w.csd_size;
     w.buffer_width = scaled_x;
@@ -462,7 +462,10 @@ wl_clipboard_set_text :: (display: *Display, text: string) {
 x_window_listener :: xdg_surface_listener.{
     configure = (data: *void, surface: *xdg_surface, serial: u32) -> void #c_call {
         w: *Wayland_Window = wl_proxy_get_user_data(surface);
+
         xdg_surface.ack_configure(surface, serial);
+        wl_surface.commit(w.handle);
+
         w.native_state |= .xdg_configured;
     }
 };
@@ -550,7 +553,7 @@ fractional_scale_listener :: wp_fractional_scale_v1_listener.{
     }
 };
 
-window_update_csd_rects :: (w: *Wayland_Window) {
+window_update_csd_rects :: (w: *Wayland_Window) #c_call {
     if w.csd_size > 0 {
         max_x := w.csd_size + w.window_width;
         max_y := w.csd_size + w.window_height;
@@ -579,6 +582,23 @@ window_update_csd_rects :: (w: *Wayland_Window) {
         w.csd_left = .{};
     }
 }
+
+decoration_listener :: zxdg_toplevel_decoration_v1_listener.{
+    configure = (data: *void, self: *zxdg_toplevel_decoration_v1, mode: u32) -> void #c_call {
+        w: *Wayland_Window = data;
+
+        window_calculate_buffer_size(w);
+        window_update_csd_rects(w);
+
+        xdg_surface.set_window_geometry(w.x_surface, w.csd_size, w.csd_size, w.window_width, w.window_height);
+        wl_surface.damage_buffer(w.handle, 0, 0, w.buffer_width, w.buffer_height);
+
+        ctx: Context;
+        push_context ctx {
+            log(">>> decoration mode: %", mode);
+        }
+    }
+};
 
 wl_create_window :: (display: *Display, window: *Window, width: int, height: int, window_name: string,
     window_x: s64, window_y: s64, parent: *Window, background_color_rgb: [3]float) -> bool
@@ -625,6 +645,7 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
 
     if d.decoration_manager {
         w.decoration = zxdg_decoration_manager_v1.get_toplevel_decoration(d.decoration_manager, w.x_toplevel);
+        zxdg_toplevel_decoration_v1.add_listener(w.decoration, *decoration_listener, w);
         zxdg_toplevel_decoration_v1.set_mode(w.decoration, zxdg_toplevel_decoration_v1.mode_server_side);
     }
 
@@ -677,19 +698,12 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
 wl_enable_csd :: (w: *Window, border_size: s32, title_size: s32) -> bool {
     ww : *Wayland_Window = w;
 
-    if ww.decoration {
-        zxdg_toplevel_decoration_v1.set_mode(ww.decoration, zxdg_toplevel_decoration_v1.mode_client_side);
-    }
-
     ww.csd_size = ifx border_size > 0 then border_size else 0;
     ww.csd_title_size = ifx title_size > 0 then title_size else 0;
 
-    window_calculate_buffer_size(ww);
-    window_update_csd_rects(ww);
-
-    xdg_surface.set_window_geometry(ww.x_surface, ww.csd_size, ww.csd_size, ww.window_width, ww.window_height);
-    wl_surface.damage_buffer(ww.handle, 0, 0, ww.buffer_width, ww.buffer_height);
-    wl_surface.commit(ww.handle);
+    if ww.decoration {
+        zxdg_toplevel_decoration_v1.set_mode(ww.decoration, zxdg_toplevel_decoration_v1.mode_client_side);
+    }
 
     return true;
 }
@@ -697,19 +711,12 @@ wl_enable_csd :: (w: *Window, border_size: s32, title_size: s32) -> bool {
 wl_disable_csd :: (w: *Window) {
     ww : *Wayland_Window = w;
 
-    if ww.decoration {
-        zxdg_toplevel_decoration_v1.set_mode(ww.decoration, zxdg_toplevel_decoration_v1.mode_server_side);
-    }
-
     ww.csd_size = 0;
     ww.csd_title_size = 0;
 
-    window_calculate_buffer_size(ww);
-    window_update_csd_rects(ww);
-
-    xdg_surface.set_window_geometry(ww.x_surface, ww.csd_size, ww.csd_size, ww.window_width, ww.window_height);
-    wl_surface.damage_buffer(ww.handle, 0, 0, ww.buffer_width, ww.buffer_height);
-    wl_surface.commit(ww.handle);
+    if ww.decoration {
+        zxdg_toplevel_decoration_v1.set_mode(ww.decoration, zxdg_toplevel_decoration_v1.mode_server_side);
+    }
 }
 
 wl_set_icon_from_raw_data :: (window: *Window, data: *u8, w: u32, h: u32) {

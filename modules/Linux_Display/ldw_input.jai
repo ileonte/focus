@@ -82,6 +82,27 @@ handle_key_event :: (d: *Wayland_Display, serial: u32, key: u32, key_state: u32,
     if event.ctrl_pressed d.input_serial = serial;
 }
 
+wl_hit_test :: (w: *Wayland_Window, p: W.Point) -> W.Hit_Test_Result #c_call {
+    if W.point_in_rectangle(p, w.client_area)
+        return .Client_Area;
+
+    if w.csd_title_size > 0 && W.point_in_rectangle(p, w.csd_title)
+        return .Window_Title;
+
+    if w.csd_size > 0 {
+        if W.point_in_rectangle(p, w.csd_top_left)     return .Resize_NW;
+        if W.point_in_rectangle(p, w.csd_top)          return .Resize_N;
+        if W.point_in_rectangle(p, w.csd_top_right)    return .Resize_NE;
+        if W.point_in_rectangle(p, w.csd_right)        return .Resize_E;
+        if W.point_in_rectangle(p, w.csd_bottom_right) return .Resize_SE;
+        if W.point_in_rectangle(p, w.csd_bottom)       return .Resize_S;
+        if W.point_in_rectangle(p, w.csd_bottom_left)  return .Resize_SW;
+        if W.point_in_rectangle(p, w.csd_left)         return .Resize_W;
+    }
+
+    return .None;
+}
+
 /* These are taken from <linux/input-event-codes.h> */
 BTN_LEFT   : u32 : 0x110;
 BTN_RIGHT  : u32 : 0x111;
@@ -102,22 +123,28 @@ refresh_cursor :: (w: *Wayland_Window, native_x: wl_fixed_t, native_y: wl_fixed_
     p := W.Point.{w.mouse_x, w.mouse_y};
 
     if w.csd_size > 0 {
-        if W.point_in_rectangle(w.mouse_x, w.mouse_y, w.client_area) {
+        htr := wl_hit_test(w, p);
+
+        if htr == .Client_Area {
             w.actual_cursor = *w.cursor;
         } else {
             sys_cursor_name := "default";
 
-            if W.point_in_rectangle(p, w.csd_title)
-                sys_cursor_name = "default";
+            if htr == {
+                case .Window_Title; /* NOOP, keep as "default */
 
-            if W.point_in_rectangle(p, w.csd_top_left) || W.point_in_rectangle(p, w.csd_bottom_right)
-                sys_cursor_name = "nwse-resize";
-            if W.point_in_rectangle(p, w.csd_top_right) || W.point_in_rectangle(p, w.csd_bottom_left)
-                sys_cursor_name = "nesw-resize";
-            if W.point_in_rectangle(p, w.csd_top) || W.point_in_rectangle(p, w.csd_bottom)
-                sys_cursor_name = "ns-resize";
-            if W.point_in_rectangle(p, w.csd_left) || W.point_in_rectangle(p, w.csd_right)
-                sys_cursor_name = "ew-resize";
+                case .Resize_NW; #through;
+                case .Resize_SE; sys_cursor_name = "nwse-resize";
+
+                case .Resize_NE; #through;
+                case .Resize_SW; sys_cursor_name = "nesw-resize";
+
+                case .Resize_N; #through;
+                case .Resize_S; sys_cursor_name = "ns-resize";
+
+                case .Resize_E; #through;
+                case .Resize_W; sys_cursor_name = "ew-resize";
+            }
 
             cursor, found := table_find(*w.display.cursors, sys_cursor_name);
             if found {
@@ -173,49 +200,60 @@ pointer_listener :: wl_pointer_listener.{
 
             if w != null && w.csd_size > 0 {
                 p := W.Point.{w.mouse_x, w.mouse_y};
+                htr := wl_hit_test(w, p);
 
                 if button == {
                     case BTN_LEFT; {
-                        if W.point_in_rectangle(p, w.csd_title) {
-                            xdg_toplevel.move(w.x_toplevel, d.seat, serial);
-                            return;
-                        }
-                        if W.point_in_rectangle(p, w.csd_top_left) {
-                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_top_left);
-                            return;
-                        }
-                        if W.point_in_rectangle(p, w.csd_top) {
-                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_top);
-                            return;
-                        }
-                        if W.point_in_rectangle(p, w.csd_top_right) {
-                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_top_right);
-                            return;
-                        }
-                        if W.point_in_rectangle(p, w.csd_right) {
-                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_right);
-                            return;
-                        }
-                        if W.point_in_rectangle(p, w.csd_bottom_right) {
-                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_bottom_right);
-                            return;
-                        }
-                        if W.point_in_rectangle(p, w.csd_bottom) {
-                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_bottom);
-                            return;
-                        }
-                        if W.point_in_rectangle(p, w.csd_bottom_left) {
-                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_bottom_left);
-                            return;
-                        }
-                        if W.point_in_rectangle(p, w.csd_left) {
-                            xdg_toplevel.resize(w.x_toplevel, d.seat, serial, xdg_toplevel.resize_edge_left);
-                            return;
+                        if htr == {
+                            case .Window_Title; {
+                                xdg_toplevel.move(w.x_toplevel, d.seat, serial);
+                                return;
+                            }
+                            case .Resize_NW; {
+                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                    xdg_toplevel.resize_edge_top_left);
+                                return;
+                            }
+                            case .Resize_N; {
+                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                    xdg_toplevel.resize_edge_top);
+                                return;
+                            }
+                            case .Resize_NE; {
+                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                    xdg_toplevel.resize_edge_top_right);
+                                return;
+                            }
+                            case .Resize_E; {
+                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                    xdg_toplevel.resize_edge_right);
+                                return;
+                            }
+                            case .Resize_SE; {
+                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                    xdg_toplevel.resize_edge_bottom_right);
+                                return;
+                            }
+                            case .Resize_S; {
+                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                    xdg_toplevel.resize_edge_bottom);
+                                return;
+                            }
+                            case .Resize_SW; {
+                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                    xdg_toplevel.resize_edge_bottom_left);
+                                return;
+                            }
+                            case .Resize_W; {
+                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                    xdg_toplevel.resize_edge_left);
+                                return;
+                            }
                         }
                     }
 
                     case BTN_RIGHT; {
-                        if W.point_in_rectangle(p, w.csd_title) {
+                        if htr == .Window_Title {
                             xdg_toplevel.show_window_menu(w.x_toplevel, d.seat, serial, p.x, p.y);
                             return;
                         }
@@ -243,7 +281,9 @@ pointer_listener :: wl_pointer_listener.{
         push_context ctx {
             d: *Wayland_Display = wl_proxy_get_user_data(self);
             sign := ifx (wl_fixed_to_double(value) < 0) then cast(s32)-1 else 1;
-            delta := (WHEEL_DELTA / 2); // @TODO: this is set on a "feels good on my machine" basis, should be calculated some other way (perhaps based on the height of a line?)
+            // @TODO: this is set on a "feels good on my machine" basis, should be calculated
+            //        some other way (perhaps based on the height of a line?)
+            delta := (WHEEL_DELTA / 2);
             if !d.pointer_axis_accumulator[axis] {
                 d.pointer_axis_accumulator[axis] = d.pointer_axis_multiplier[axis] * sign * delta;
             }
