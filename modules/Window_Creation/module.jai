@@ -44,3 +44,17 @@ point_in_rectangle :: inline (p: Point, r: Rect) -> bool #c_call {
     return point_in_rectangle(p.x, p.y, r);
 }
 
+
+Hit_Test_Result :: enum {
+    None;
+    Client_Area;
+    Window_Title;
+    Resize_NW;
+    Resize_N;
+    Resize_NE;
+    Resize_E;
+    Resize_SE;
+    Resize_S;
+    Resize_SW;
+    Resize_W;
+}
