@@ -82,27 +82,6 @@ handle_key_event :: (d: *Wayland_Display, serial: u32, key: u32, key_state: u32,
     if event.ctrl_pressed d.input_serial = serial;
 }
 
-wl_hit_test :: (w: *Wayland_Window, p: W.Point) -> W.Hit_Test_Result #c_call {
-    if W.point_in_rectangle(p, w.client_area)
-        return .Client_Area;
-
-    if w.csd_title_size > 0 && W.point_in_rectangle(p, w.csd_title)
-        return .Window_Title;
-
-    if w.csd_size > 0 {
-        if W.point_in_rectangle(p, w.csd_top_left)     return .Resize_NW;
-        if W.point_in_rectangle(p, w.csd_top)          return .Resize_N;
-        if W.point_in_rectangle(p, w.csd_top_right)    return .Resize_NE;
-        if W.point_in_rectangle(p, w.csd_right)        return .Resize_E;
-        if W.point_in_rectangle(p, w.csd_bottom_right) return .Resize_SE;
-        if W.point_in_rectangle(p, w.csd_bottom)       return .Resize_S;
-        if W.point_in_rectangle(p, w.csd_bottom_left)  return .Resize_SW;
-        if W.point_in_rectangle(p, w.csd_left)         return .Resize_W;
-    }
-
-    return .None;
-}
-
 /* These are taken from <linux/input-event-codes.h> */
 BTN_LEFT   : u32 : 0x110;
 BTN_RIGHT  : u32 : 0x111;
@@ -120,10 +99,8 @@ refresh_cursor :: (w: *Wayland_Window) {
 refresh_cursor :: (w: *Wayland_Window, native_x: wl_fixed_t, native_y: wl_fixed_t) {
     w.mouse_x, w.mouse_y = wl_fixed_to_int(native_x), wl_fixed_to_int(native_y);
 
-    p := W.Point.{w.mouse_x, w.mouse_y};
-
-    if w.csd_size > 0 {
-        htr := wl_hit_test(w, p);
+    if w.hit_test_cb {
+        htr := w.hit_test_cb(xx w, w.mouse_x, w.mouse_y, w.hit_test_data);
 
         if htr == .Client_Area {
             w.actual_cursor = *w.cursor;
@@ -198,64 +175,67 @@ pointer_listener :: wl_pointer_listener.{
         if state == wl_pointer.button_state_pressed {
             w := d.current_hovered_window;
 
-            if w != null && w.csd_size > 0 {
-                p := W.Point.{w.mouse_x, w.mouse_y};
-                htr := wl_hit_test(w, p);
+            if w != null && w.hit_test_cb {
+                ctx: Context;
+                push_context ctx {
+                    htr := w.hit_test_cb(xx w, w.mouse_x, w.mouse_y, w.hit_test_data);
 
-                if button == {
-                    case BTN_LEFT; {
-                        if htr == {
-                            case .Window_Title; {
-                                xdg_toplevel.move(w.x_toplevel, d.seat, serial);
-                                return;
-                            }
-                            case .Resize_NW; {
-                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
-                                    xdg_toplevel.resize_edge_top_left);
-                                return;
-                            }
-                            case .Resize_N; {
-                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
-                                    xdg_toplevel.resize_edge_top);
-                                return;
-                            }
-                            case .Resize_NE; {
-                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
-                                    xdg_toplevel.resize_edge_top_right);
-                                return;
-                            }
-                            case .Resize_E; {
-                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
-                                    xdg_toplevel.resize_edge_right);
-                                return;
-                            }
-                            case .Resize_SE; {
-                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
-                                    xdg_toplevel.resize_edge_bottom_right);
-                                return;
-                            }
-                            case .Resize_S; {
-                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
-                                    xdg_toplevel.resize_edge_bottom);
-                                return;
-                            }
-                            case .Resize_SW; {
-                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
-                                    xdg_toplevel.resize_edge_bottom_left);
-                                return;
-                            }
-                            case .Resize_W; {
-                                xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
-                                    xdg_toplevel.resize_edge_left);
-                                return;
+                    if button == {
+                        case BTN_LEFT; {
+                            if htr == {
+                                case .Window_Title; {
+                                    xdg_toplevel.move(w.x_toplevel, d.seat, serial);
+                                    return;
+                                }
+                                case .Resize_NW; {
+                                    xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                        xdg_toplevel.resize_edge_top_left);
+                                    return;
+                                }
+                                case .Resize_N; {
+                                    xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                        xdg_toplevel.resize_edge_top);
+                                    return;
+                                }
+                                case .Resize_NE; {
+                                    xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                        xdg_toplevel.resize_edge_top_right);
+                                    return;
+                                }
+                                case .Resize_E; {
+                                    xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                        xdg_toplevel.resize_edge_right);
+                                    return;
+                                }
+                                case .Resize_SE; {
+                                    xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                        xdg_toplevel.resize_edge_bottom_right);
+                                    return;
+                                }
+                                case .Resize_S; {
+                                    xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                        xdg_toplevel.resize_edge_bottom);
+                                    return;
+                                }
+                                case .Resize_SW; {
+                                    xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                        xdg_toplevel.resize_edge_bottom_left);
+                                    return;
+                                }
+                                case .Resize_W; {
+                                    xdg_toplevel.resize(w.x_toplevel, d.seat, serial,
+                                        xdg_toplevel.resize_edge_left);
+                                    return;
+                                }
                             }
                         }
-                    }
 
-                    case BTN_RIGHT; {
-                        if htr == .Window_Title {
-                            xdg_toplevel.show_window_menu(w.x_toplevel, d.seat, serial, p.x, p.y);
-                            return;
+                        case BTN_RIGHT; {
+                            if htr == .Window_Title {
+                                xdg_toplevel.show_window_menu(w.x_toplevel, d.seat, serial,
+                                    w.mouse_x, w.mouse_y);
+                                return;
+                            }
                         }
                     }
                 }

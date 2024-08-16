@@ -19,7 +19,8 @@ active_gl_backend :: inline () -> GL_BACKEND {
 
 create_window :: inline (width: int, height: int, window_name: string,
     window_x := 0, window_y := 0, parent: *Window = INVALID_WINDOW,
-    background_color_rgb: [3]float) -> *Window
+    background_color_rgb: [3]float,
+    client_side_decorations: *W.Client_Side_Decorations_Params) -> *Window
 {
     return create_window(
         global_display,
@@ -27,7 +28,8 @@ create_window :: inline (width: int, height: int, window_name: string,
         window_name,
         window_x, window_y,
         parent,
-        background_color_rgb);
+        background_color_rgb,
+        client_side_decorations);
 }
 
 get_by_native_handle :: inline (native_handle: *void) -> *Window {

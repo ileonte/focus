@@ -133,12 +133,6 @@ main :: () {
 
     window_generic_title = ifx DEBUG then "Focus (debug mode)" else "Focus";
     platform_create_window();
-    if config.settings.use_system_window_decorations {
-        WC.disable_client_side_decorations(window);
-    } else {
-        if !WC.enable_client_side_decorations(window, csd_size, 30)
-            log("Failed to enable client-side decorations");
-    }
 
     if project_config.loaded then update_window_title();
 
@@ -167,7 +161,6 @@ main :: () {
     platform_enable_drag_and_drop(window);
 
     window_width, window_height = Simp.get_render_dimensions(window);
-    screen = make_rect(0, 0, window_width, window_height);
     Simp.set_render_target(window);
 
     // Init logger after we know the session dir and the config
@@ -182,6 +175,8 @@ main :: () {
     dpi_scale = platform_get_dpi_scale(window);
     init_fonts_and_dependent_things();
     old_line_height = line_height;
+
+    recalculate_rects(window_width, window_height);  // this depends on dpi_scale and ui_font_height
 
     window_has_focus := true;
     window_resized   := false;
@@ -210,7 +205,7 @@ main :: () {
                 window_height = it.height;
                 if should_reinit {
                     // Cleanup: revisit this code, it's been touched by multiple people and needs simplification
-                    screen    = make_rect(0, 0, window_width, window_height);
+                    recalculate_rects(window_width, window_height);
                     dpi_scale = platform_get_dpi_scale(window);
                     init_fonts_and_dependent_things();
                     dont_ignore_next_window_resize = false;
@@ -901,6 +896,7 @@ dont_ignore_next_window_resize := false;
 #load "buffer.jai";
 #load "build_system.jai";
 #load "unicode.jai";
+#load "csd.jai";
 #load "draw.jai";
 #load "pointer_image.jai";
 #load "utils.jai";

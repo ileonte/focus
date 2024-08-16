@@ -107,6 +107,8 @@ DONE;
     system_info.ld_backend = LD.active_backend();
     system_info.ld_gl_backend_choice = gl_backend;
     system_info.ld_gl_backend = LD.active_gl_backend();
+
+    CSD.enabled = LD.active_backend() == .WAYLAND;
 }
 
 platform_data_dir :: () -> string {
@@ -133,18 +135,48 @@ platform_get_centered_window_dimensions :: (open_on_biggest: bool) -> s32, s32, 
     return 0, 0, 1920, 1080;
 }
 
+convert :: inline (using r: Rect) -> WC.Rect { return .{xx x, xx y, xx w, xx h}; }
+convert :: inline (using r: WC.Rect) -> Rect { return .{xx x, xx y, xx w, xx h}; }
+is_sized :: inline (using r: Rect) -> bool { return w > 0 && h > 0; };
+is_sized :: inline (using r: WC.Rect) -> bool { return w > 0 && h > 0; }
+
+linux_csd_params : WC.Client_Side_Decorations_Params : .{
+    calc_size_cb = (window: WC.Window_Type, client_area_in: WC.Rect, data: *void) -> (calculated_client_area: WC.Rect, calculated_window_area: WC.Rect) {
+        recalculate_rects(xx client_area_in.w, xx client_area_in.h);
+        return convert(CSD.draw_area), convert(screen);
+    },
+
+    hit_test_cb = (window: WC.Window_Type, x: s32, y: s32, data: *void) -> WC.Hit_Test_Result {
+        point := Vector2.{xx x, xx y};
+
+        if point_within(point, CSD.title_area_win)  return .Window_Title;
+        if point_within(point, CSD.client_area_win) return .Client_Area;
+        if point_within(point, CSD.resize_NW)       return .Resize_NW;
+        if point_within(point, CSD.resize_N)        return .Resize_N;
+        if point_within(point, CSD.resize_NE)       return .Resize_NE;
+        if point_within(point, CSD.resize_E)        return .Resize_E;
+        if point_within(point, CSD.resize_SE)       return .Resize_SE;
+        if point_within(point, CSD.resize_S)        return .Resize_S;
+        if point_within(point, CSD.resize_SW)       return .Resize_SW;
+        if point_within(point, CSD.resize_W)        return .Resize_W;
+
+        return .None;
+    },
+};
+
 platform_create_window :: () {
+    // log("CSD=%", CSD);
+
     window = LD.create_window(
         window_width, window_height,
         window_generic_title,
         window_x, window_y,
         background_color_rgb = color_as_3_floats(Color.BACKGROUND_0),
+        ifx CSD.enabled then *linux_csd_params else null,
     );
 
     if LD.active_backend() == {
         case .WAYLAND; {
-            if !LD.enable_client_side_decorations(window, csd_size, 0)
-                log("WAYLAND: failed to enable client-side decorations");
         }
 
         case; {

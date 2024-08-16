@@ -68,7 +68,6 @@ Wayland_Window :: struct {
 
     background_color_buffer: *wl_buffer;
 
-    native_state: WLNativeWindowState;
     x_surface: *xdg_surface;
     x_toplevel: *xdg_toplevel;
     decoration: *zxdg_toplevel_decoration_v1;
@@ -82,7 +81,7 @@ Wayland_Window :: struct {
     buffer_width: s32;
     buffer_height: s32;
 
-    actual_cursor: *WLCursor;  // currently active cursor, may be a "system" selected one when CSD are used
+    actual_cursor: *WLCursor;  // currently active cursor
     cursor: WLCursor;          // user-requested cursor
     system_cursor: WLCursor;   // system-selected cursor for CSD
     mouse_x: s32;
@@ -99,24 +98,15 @@ Wayland_Window :: struct {
     fractional_scale_proxy: *wp_fractional_scale_v1;
     fractional_scale: s32 = 120;
 
-    // dumb stuff
-    pre_configure_desired_state: WLDesiredPreconfigureState;
-
     initial_max_width: s32;
     initial_max_height: s32;
 
-    csd_size: s32;
-    csd_title_size: s32;
-    client_area      : W.Rect;
-    csd_title        : W.Rect;
-    csd_top_left     : W.Rect;
-    csd_top          : W.Rect;
-    csd_top_right    : W.Rect;
-    csd_right        : W.Rect;
-    csd_bottom_right : W.Rect;
-    csd_bottom       : W.Rect;
-    csd_bottom_left  : W.Rect;
-    csd_left         : W.Rect;
+    using client_side_decorations: W.Client_Side_Decorations_Params;
+
+    initial_config_done := false;
+
+    xdg_config: WLXDGConfig;
+    active_decoration_mode: u32;
 }
 
 wl_init_display :: (display: *Display) -> bool {
@@ -177,6 +167,8 @@ wl_init_display :: (display: *Display) -> bool {
     bd.clipboard_get_text         = wl_clipboard_get_text;
     bd.get_mouse_pointer_position = wl_get_mouse_pointer_position;
 
+    // create_gl_context(display);
+
     return true;
 }
 
@@ -204,16 +196,6 @@ WLDesiredPreconfigureState :: enum {
 WLNativeWindowState :: enum_flags {
     xdg_configured;
     xdg_toplevel_configured;
-}
-
-window_calculate_buffer_size :: inline (w: *Wayland_Window) #c_call {
-    scaled_x : s32 = w.window_width;
-    if w.csd_size > 0  scaled_x += 2 * w.csd_size;
-    w.buffer_width = scaled_x;
-
-    scaled_y : s32 = w.window_height;
-    if w.csd_size > 0  scaled_y += 2 * w.csd_size;
-    w.buffer_height = scaled_y;
 }
 
 wm_base_listener :: xdg_wm_base_listener.{
@@ -459,14 +441,50 @@ wl_clipboard_set_text :: (display: *Display, text: string) {
     wl_data_device.set_selection(d.data_device, d.clipboard_source, d.input_serial);
 }
 
+
+
+WLXDGConfig :: struct {
+    has_resize := false;
+    width: s32;
+    height: s32;
+
+    has_bounds := false;
+    max_width: s32;
+    max_height: s32;
+
+    has_decoration_change := false;
+    decoration_mode: u32;
+}
+
 x_window_listener :: xdg_surface_listener.{
     configure = (data: *void, surface: *xdg_surface, serial: u32) -> void #c_call {
-        w: *Wayland_Window = wl_proxy_get_user_data(surface);
+        ctx: Context;
+        push_context ctx {
+            w: *Wayland_Window = data;
 
-        xdg_surface.ack_configure(surface, serial);
-        wl_surface.commit(w.handle);
+            xdg_surface.ack_configure(surface, serial);
 
-        w.native_state |= .xdg_configured;
+            c := *w.xdg_config;
+            if c.has_decoration_change && c.decoration_mode != w.active_decoration_mode {
+                log(">>> decoration_mode=%", c.decoration_mode);
+                w.active_decoration_mode = c.decoration_mode;
+            }
+            if c.has_bounds {
+                w.initial_max_width = c.max_width;
+                w.initial_max_height = c.max_height;
+            }
+            if c.has_resize {
+                log(">>> resize=%x%", c.width, c.height);
+                wl_window_handle_resize(w, c.width, c.height);
+            } else {
+                wl_surface.commit(w.handle);
+            }
+
+            log("--- xdg_config=%", w.xdg_config);
+            c.* = .{};
+
+            w.initial_config_done = true;
+        }
     }
 };
 
@@ -474,34 +492,24 @@ x_toplevel_listener :: xdg_toplevel_listener.{
     configure = (data: *void, toplevel: *xdg_toplevel, width: s32, height: s32, states: *wl_array) -> void #c_call {
         ctx: Context;
         push_context ctx {
-            w: *Wayland_Window = wl_proxy_get_user_data(toplevel);
-
-            if !(w.native_state & .xdg_toplevel_configured) {
-                w.native_state |= .xdg_toplevel_configured;
-
-                if w.pre_configure_desired_state == {
-                    case .FULLSCREEN; wl_toggle_fullscreen(xx w, true, null);
-                    case .MAXIMIZED; wl_maximize_window(xx w);
-                }
-                w.pre_configure_desired_state = .NONE;
-
-                return;
-            }
-
-            wl_window_handle_resize(w, width, height);
+            w: *Wayland_Window = data;
+            w.xdg_config.has_resize = true;
+            w.xdg_config.width = width;
+            w.xdg_config.height = height;
         }
     },
 
     configure_bounds = (data: *void, self: *xdg_toplevel, width: s32, height: s32) -> void #c_call {
         w: *Wayland_Window = wl_proxy_get_user_data(self);
-        w.initial_max_width = width;
-        w.initial_max_height = height;
+        w.xdg_config.has_bounds = true;
+        w.xdg_config.max_width = width;
+        w.xdg_config.max_height = height;
     },
 
     close = (data: *void, toplevel: *xdg_toplevel) -> void #c_call {
         ctx: Context;
         push_context ctx {
-            w: *Wayland_Window = wl_proxy_get_user_data(toplevel);
+            w: *Wayland_Window = data;
             d := w.display;
             event: Input.Event;
             event.type = .QUIT;
@@ -510,28 +518,65 @@ x_toplevel_listener :: xdg_toplevel_listener.{
     },
 };
 
+x_decoration_listener :: zxdg_toplevel_decoration_v1_listener.{
+    configure = (data: *void, self: *zxdg_toplevel_decoration_v1, mode: u32) -> void #c_call {
+        w: *Wayland_Window = data;
+        w.xdg_config.has_decoration_change = true;
+        w.xdg_config.decoration_mode = mode;
+    }
+};
+
+wl_window_calculate_sizes :: inline (w: *Wayland_Window, new_width: s32, new_height: s32) -> W.Rect {
+    w.buffer_width  = ifx new_width > 0 then new_width else w.creation_width;
+    w.buffer_height = ifx new_height > 0 then new_height else w.creation_height;
+    if !w.initial_config_done {
+        if w.initial_max_width > 0 && w.buffer_width >= w.initial_max_width
+            w.buffer_width = max(w.initial_max_width - 10, 100);
+
+        if w.initial_max_height > 0 && w.buffer_height >= w.initial_max_height
+            w.buffer_height = max(w.initial_max_height - 10, 100);
+    }
+
+    w.window_width  = w.buffer_width;
+    w.window_height = w.buffer_height;
+
+    client_area: W.Rect = .{0, 0, w.buffer_width, w.buffer_height};
+
+    if w.calc_size_cb {
+        window_area: W.Rect;
+
+        ctx: Context;
+        push_context ctx {
+            client_area, window_area = w.calc_size_cb(xx w, client_area, w.calc_size_data);
+            assert(window_area.w >= client_area.x + client_area.w);
+            assert(window_area.h >= client_area.y + client_area.h);
+        }
+
+        w.buffer_width  = window_area.w;
+        w.buffer_height = window_area.h;
+
+        w.window_width  = client_area.w;
+        w.window_height = client_area.h;
+    }
+
+    return client_area;
+}
+
 wl_window_handle_resize :: (w: *Wayland_Window, width: s32, height: s32) {
-    configured :: WLNativeWindowState.xdg_configured | .xdg_toplevel_configured;
+    new_width  := ifx !width then w.creation_width else width;
+    new_height := ifx !height then w.creation_height else height;
 
-    if width == w.window_width && height == w.window_height return;
-    if !(w.native_state && configured) return;
-
-    w.window_width  = ifx !width then w.creation_width else width;
-    w.window_height = ifx !height then w.creation_height else height;
-
-    window_calculate_buffer_size(w);
-    window_update_csd_rects(w);
+    r := wl_window_calculate_sizes(w, new_width, new_height);
 
     if w.base.gl.egl.native
         wl_egl_window_resize(w.base.gl.egl.native, w.buffer_width, w.buffer_height, 0, 0);
 
-    if w.csd_size > 0 {
-        xdg_surface.set_window_geometry(w.x_surface, w.csd_size, w.csd_size, w.window_width, w.window_height);
-    }
+    log("wl_window_handle_resize(): xdg_surface.set_window_geometry(%)", r);
+    xdg_surface.set_window_geometry(w.x_surface, r.x, r.y, r.w, r.h);
     wl_surface.damage_buffer(w.handle, 0, 0, w.buffer_width, w.buffer_height);
     wl_surface.commit(w.handle);
 
-    Input.add_resize_record(xx w, xx w.buffer_width, xx w.buffer_height);
+    Input.add_resize_record(xx w, xx w.window_width, xx w.window_height);
 }
 
 wl_get_dpi_scaling_factor :: (window: *Window) -> float {
@@ -553,55 +598,9 @@ fractional_scale_listener :: wp_fractional_scale_v1_listener.{
     }
 };
 
-window_update_csd_rects :: (w: *Wayland_Window) #c_call {
-    if w.csd_size > 0 {
-        max_x := w.csd_size + w.window_width;
-        max_y := w.csd_size + w.window_height;
-
-        w.client_area = W.Rect.{w.csd_size, w.csd_size + w.csd_title_size, w.window_width, w.window_height - w.csd_title_size};
-        w.csd_title   = W.Rect.{w.csd_size, w.csd_size,                    w.window_width, w.csd_title_size};
-
-        w.csd_top_left     = W.Rect.{0,           0,          w.csd_size,     w.csd_size     };
-        w.csd_top          = W.Rect.{w.csd_size,  0,          w.window_width, w.csd_size     };
-        w.csd_top_right    = W.Rect.{max_x,       0,          w.csd_size,     w.csd_size     };
-        w.csd_right        = W.Rect.{max_x,       w.csd_size, w.csd_size,     w.window_height};
-        w.csd_bottom_right = W.Rect.{max_x,       max_y,      w.csd_size,     w.csd_size     };
-        w.csd_bottom       = W.Rect.{w.csd_size,  max_y,      w.window_width, w.csd_size     };
-        w.csd_bottom_left  = W.Rect.{0,           max_y,      w.csd_size,     w.csd_size     };
-        w.csd_left         = W.Rect.{0,           w.csd_size, w.csd_size,     w.window_height};
-    } else {
-        w.client_area = .{};
-        w.csd_title = .{};
-        w.csd_top_left = .{};
-        w.csd_top = .{};
-        w.csd_top_right = .{};
-        w.csd_right = .{};
-        w.csd_bottom_right = .{};
-        w.csd_bottom = .{};
-        w.csd_bottom_left = .{};
-        w.csd_left = .{};
-    }
-}
-
-decoration_listener :: zxdg_toplevel_decoration_v1_listener.{
-    configure = (data: *void, self: *zxdg_toplevel_decoration_v1, mode: u32) -> void #c_call {
-        w: *Wayland_Window = data;
-
-        window_calculate_buffer_size(w);
-        window_update_csd_rects(w);
-
-        xdg_surface.set_window_geometry(w.x_surface, w.csd_size, w.csd_size, w.window_width, w.window_height);
-        wl_surface.damage_buffer(w.handle, 0, 0, w.buffer_width, w.buffer_height);
-
-        ctx: Context;
-        push_context ctx {
-            log(">>> decoration mode: %", mode);
-        }
-    }
-};
-
 wl_create_window :: (display: *Display, window: *Window, width: int, height: int, window_name: string,
-    window_x: s64, window_y: s64, parent: *Window, background_color_rgb: [3]float) -> bool
+    window_x: s64, window_y: s64, parent: *Window, background_color_rgb: [3]float,
+    client_side_decorations: *W.Client_Side_Decorations_Params) -> bool
 {
     wl_check_usage(display, parent);
 
@@ -609,8 +608,7 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
     w: *Wayland_Window = window;
 
     w.display = d;
-    w.csd_size = 0;
-
+    w.client_side_decorations = ifx client_side_decorations then client_side_decorations.* else .{};
     w.title = copy_string(window_name);
 
     w.creation_width = xx width;
@@ -645,8 +643,10 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
 
     if d.decoration_manager {
         w.decoration = zxdg_decoration_manager_v1.get_toplevel_decoration(d.decoration_manager, w.x_toplevel);
-        zxdg_toplevel_decoration_v1.add_listener(w.decoration, *decoration_listener, w);
-        zxdg_toplevel_decoration_v1.set_mode(w.decoration, zxdg_toplevel_decoration_v1.mode_server_side);
+        zxdg_toplevel_decoration_v1.add_listener(w.decoration, *x_decoration_listener, w);
+        zxdg_toplevel_decoration_v1.set_mode(
+            w.decoration,
+            ifx client_side_decorations then zxdg_toplevel_decoration_v1.mode_client_side else zxdg_toplevel_decoration_v1.mode_server_side);
     }
 
     if d.fractional_scale_manager {
@@ -657,22 +657,11 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
 
     wl_surface.commit(w.handle);
 
-    configured :: WLNativeWindowState.xdg_configured | .xdg_toplevel_configured;
-    while !(w.native_state & configured) {
+    while !w.initial_config_done {
         wl_display_dispatch(d.handle);
     }
-
-    if w.initial_max_height > 10 && w.initial_max_width > 10 {
-        w.window_width = min(w.window_width, w.initial_max_width - 10);
-        w.window_height = min(w.window_height, w.initial_max_height - 10);
-    }
-
-    window_calculate_buffer_size(w);
-    window_update_csd_rects(w);
-
-    xdg_surface.set_window_geometry(w.x_surface, w.csd_size, w.csd_size, w.window_width, w.window_height);
-    wl_surface.damage_buffer(w.handle, 0, 0, w.buffer_width, w.buffer_height);
-    wl_surface.commit(w.handle);
+    log(">>> initial config done (buffer_width=% buffer_height=%)", w.buffer_width, w.buffer_height);
+    assert(w.buffer_width > 0 && w.buffer_height > 0);
 
     bw: *Base_Window = window;
     bw.type    = Wayland_Window;
@@ -689,34 +678,10 @@ wl_create_window :: (display: *Display, window: *Window, width: int, height: int
     bw.maximize_window            = wl_maximize_window;
     bw.set_cursor_from_theme      = wl_set_cursor_from_theme;
     bw.get_dpi_scaling_factor     = wl_get_dpi_scaling_factor;
-    bw.enable_csd                 = wl_enable_csd;
-    bw.disable_csd                = wl_disable_csd;
+
+    // create_gl_surface(window);
 
     return true;
-}
-
-wl_enable_csd :: (w: *Window, border_size: s32, title_size: s32) -> bool {
-    ww : *Wayland_Window = w;
-
-    ww.csd_size = ifx border_size > 0 then border_size else 0;
-    ww.csd_title_size = ifx title_size > 0 then title_size else 0;
-
-    if ww.decoration {
-        zxdg_toplevel_decoration_v1.set_mode(ww.decoration, zxdg_toplevel_decoration_v1.mode_client_side);
-    }
-
-    return true;
-}
-
-wl_disable_csd :: (w: *Window) {
-    ww : *Wayland_Window = w;
-
-    ww.csd_size = 0;
-    ww.csd_title_size = 0;
-
-    if ww.decoration {
-        zxdg_toplevel_decoration_v1.set_mode(ww.decoration, zxdg_toplevel_decoration_v1.mode_server_side);
-    }
 }
 
 wl_set_icon_from_raw_data :: (window: *Window, data: *u8, w: u32, h: u32) {
@@ -775,10 +740,10 @@ wl_toggle_fullscreen :: (window: *Window, desire_fullscreen: bool, _unused: *Sav
     wl_check_usage(null, window);
 
     w: *Wayland_Window = window;
-    if !(w.native_state & .xdg_toplevel_configured) {
-        w.pre_configure_desired_state = .FULLSCREEN;
-        return false, w.window_width, w.window_height;
-    }
+    // if !(w.native_state & .xdg_toplevel_configured) {
+    //     w.pre_configure_desired_state = .FULLSCREEN;
+    //     return false, w.window_width, w.window_height;
+    // }
     if desire_fullscreen xdg_toplevel.set_fullscreen(w.x_toplevel, null);
     else xdg_toplevel.unset_fullscreen(w.x_toplevel);
     wl_display_roundtrip(w.display.handle);
@@ -788,10 +753,10 @@ wl_toggle_fullscreen :: (window: *Window, desire_fullscreen: bool, _unused: *Sav
 wl_maximize_window :: (window: *Window) {
     wl_check_usage(null, window);
     w: *Wayland_Window = window;
-    if !(w.native_state & .xdg_toplevel_configured) {
-        w.pre_configure_desired_state = .MAXIMIZED;
-        return;
-    }
+    // if !(w.native_state & .xdg_toplevel_configured) {
+    //     w.pre_configure_desired_state = .MAXIMIZED;
+    //     return;
+    // }
     xdg_toplevel.set_maximized(w.x_toplevel);
 }
 

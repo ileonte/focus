@@ -1,31 +1,15 @@
-needs_csd := OS == .LINUX;
-csd_size : s32 = 12;
-csd_corner_radius : s32 = 8;
-csd_enabled := true;
-
 draw_frame :: () {
-    if csd_enabled != config.settings.use_system_window_decorations {
-        if config.settings.use_system_window_decorations {
-            WC.disable_client_side_decorations(window);
-        } else {
-            if !WC.enable_client_side_decorations(window, csd_size, 30)
-                log("Failed to enable client-side decorations");
-        }
-        csd_enabled = config.settings.use_system_window_decorations;
-    }
-
-    {
-        // c := map_color_to_vec4(Color.BACKGROUND_1);
-        c := Vector4.{0, 0, 0, 0};
-        Simp.clear_render_target(c.x, c.y, c.z, c.w);
-    }
     if !is_valid(screen) || screen.w < MIN_WINDOW_WIDTH || screen.h < MIN_WINDOW_HEIGHT return;
 
     client_area := screen;
-    if needs_csd {
-        client_area = shrink(client_area, cast(float) csd_size);
-        draw_rounded_rect_with_shadow(client_area, map_color_to_vec4(Color.BACKGROUND_1),
-            cast(float) csd_corner_radius, cast(float) csd_size);
+    if !CSD.enabled {
+        c := map_color_to_vec4(Color.BACKGROUND_1);
+        Simp.clear_render_target(c.x, c.y, c.z, c.w);
+    } else {
+        Simp.clear_render_target(0, 0, 0, 0);
+        draw_rounded_rect_with_shadow(CSD.draw_area, map_color_to_vec4(Color.BACKGROUND_1),
+            cast(float) CSD.border_size, cast(float) CSD.border_size);
+        client_area = CSD.client_area;
     }
 
     maybe_set_hot_or_active(.none, client_area, .NORMAL);

@@ -134,14 +134,23 @@ active_gl_backend :: (display: *Display) -> GL_BACKEND {
  */
 create_window :: inline (display: *Display, width: int, height: int, window_name: string,
     window_x := 0, window_y := 0, parent: *Window = INVALID_WINDOW,
-    background_color_rgb: [3]float) -> *Window
+    background_color_rgb: [3]float,
+    client_side_decorations: *W.Client_Side_Decorations_Params = null) -> *Window
 {
+    if client_side_decorations {
+        if !client_side_decorations.calc_size_cb || !client_side_decorations.hit_test_cb {
+            log_error("Incomplete client_side_decorations: %", client_side_decorations.*);
+            return INVALID_WINDOW;
+        }
+    }
+
     bd: *Base_Display = display;
     ret := array_add(*bd.windows);
     ret.* = .{};
     ok := bd.create_window(display, ret, width, height, window_name,
         window_x, window_y,
-        parent, background_color_rgb);
+        parent, background_color_rgb,
+        client_side_decorations);
     if !ok {
         pop(*bd.windows);
         return INVALID_WINDOW;
@@ -229,14 +238,9 @@ set_fixed_scaling :: (display: *Display, factor: float) {
     bd.set_fixed_scaling(display, factor);
 }
 
-enable_client_side_decorations :: (window: *Window, border_size: s32, title_size: s32) -> bool {
+set_hit_test_callback :: (window: *Window, cb: W.Hit_Test_Callback, data: *void) {
     bw: *Base_Window = window;
-    return bw.enable_csd(window, border_size, title_size);
-}
-
-disable_client_side_decorations :: (window: *Window) {
-    bw: *Base_Window = window;
-    bw.disable_csd(window);
+    bw.set_hit_test_callback(window, cb, data);
 }
 
 /*
@@ -395,7 +399,8 @@ Base_Display :: struct {
         window_name: string,
         window_x := 0, window_y := 0,
         parent: *Window = null,
-        background_color_rgb: [3]float) -> bool;
+        background_color_rgb: [3]float,
+        client_side_decorations: *W.Client_Side_Decorations_Params) -> bool;
 
     set_fixed_scaling: (display: *Display, factor: float);
 
@@ -427,8 +432,6 @@ Base_Window :: struct {
     maximize_window: (window: *Window);
     set_cursor_from_theme: (window: *Window, name: string);
     get_dpi_scaling_factor: (window: *Window) -> float;
-    enable_csd: (window: *Window, border_size: s32, title_size: s32) -> bool;
-    disable_csd: (window: *Window);
 }
 
 #if VALIDATE_USAGE {

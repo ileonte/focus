@@ -607,7 +607,7 @@ Settings :: struct {
     status_bar_position                           := Status_Bar_Position.bottom;
     color_preview_popup                           := Color_Preview_Popup.enabled;
 
-    use_system_window_decorations                 := true;
+    window_decorations                            := Window_Decoration_Kind.auto;
 
     // TODO
     // convert_tabs_to_spaces_on_load:     false
@@ -617,6 +617,12 @@ Settings :: struct {
 Status_Bar_Position :: enum {
     bottom;
     top;
+}
+
+Window_Decoration_Kind :: enum {
+    auto;
+    system;
+    custom;
 }
 
 Color_Preview_Popup :: enum {

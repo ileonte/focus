@@ -191,11 +191,7 @@ get_mouse_pointer_position :: inline (right_handed := false) -> x: int, y: int, 
     return x, y, success;
 }
 
-enable_client_side_decorations :: (win: Window_Type, border_size: s32, title_size: s32) -> bool {
-    return false;
-}
-
-disable_client_side_decorations :: (win: Window_Type) {
+set_hit_test_callback :: inline (win: Window_Type, cb: Hit_Test_Callback, data: *void) {
     /* NOOP */
 }
 

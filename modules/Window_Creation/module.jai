@@ -23,27 +23,20 @@ WT :: #import "Window_Type";  // Define this for the people.
 Window_Type :: WT.Window_Type;
 INVALID_WINDOW :: WT.INVALID_WINDOW;
 
-Point :: struct {
-    x, y: s32;
-}
 
 Rect :: struct {
     x, y: s32;
     w, h: s32;
 }
 
-rect_is_valid :: inline (r: Rect) -> bool #c_call {
-    return r.w > 0 && r.h > 0;
+/*
+ * Same semantics as `NCCALCSIZE_PARAMS::rgrc` as described in:
+ *   https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-nccalcsize_params
+ */
+Calc_Size_Params :: struct {
+    rects: [3]Rect;
 }
-
-point_in_rectangle :: inline (x: s32, y: s32, r: Rect) -> bool #c_call {
-    return rect_is_valid(r) && x >= r.x && x < (r.x + r.w) && y >= r.y && y < (r.y + r.h);
-}
-
-point_in_rectangle :: inline (p: Point, r: Rect) -> bool #c_call {
-    return point_in_rectangle(p.x, p.y, r);
-}
-
+Calc_Size_Callback :: #type (window: Window_Type, client_area_in: Rect, data: *void) -> (calculated_client_area: Rect, calculated_window_area: Rect);
 
 Hit_Test_Result :: enum {
     None;
@@ -57,4 +50,13 @@ Hit_Test_Result :: enum {
     Resize_S;
     Resize_SW;
     Resize_W;
+}
+Hit_Test_Callback :: #type (window: Window_Type, x: s32, y: s32, data: *void) -> Hit_Test_Result;
+
+Client_Side_Decorations_Params :: struct {
+    calc_size_cb: Calc_Size_Callback;
+    calc_size_data: *void;
+
+    hit_test_cb: Hit_Test_Callback;
+    hit_test_data: *void;
 }

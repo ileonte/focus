@@ -110,11 +110,7 @@ toggle_fullscreen :: (hwnd: HWND, desire_fullscreen: bool, saved: *Saved_Window_
     }
 }
 
-enable_client_side_decorations :: (win: Window_Type, border_size: s32, title_size: s32) -> bool {
-    return false;
-}
-
-disable_client_side_decorations :: (win: Window_Type) {
+set_hit_test_callback :: inline (win: Window_Type, cb: Hit_Test_Callback, data: *void) {
     /* NOOP */
 }
 
