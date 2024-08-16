@@ -21,71 +21,76 @@ draw_frame :: () {
 
     active_pane_rect: Rect = ---;
 
-    // Draw editors
-    if #complete editors.layout == {
-        case .None;
-            editors_snap_splitter(0.5);
-            draw_welcome_screen(client_area);
+    push_scissor(client_area);
+    {
+        defer pop_scissor();
 
-        case .Single;
-            editors_snap_splitter(0.5);
-            draw_editor(editors.left, client_area, status_bar_height, .editor_single);
-            active_pane_rect = client_area;
+        // Draw editors
+        if #complete editors.layout == {
+            case .None;
+                editors_snap_splitter(0.5);
+                draw_welcome_screen(client_area);
 
-        case .Double;
-            // Drag splitter
-            if ui.active == .editor_splitter {
-                editors_snap_splitter((mouse.pointer.x - screen.x) / screen.w);
-                editors.expanded = false;
-            }
-            if !values_are_close(splitter_pos, splitter_anim.target) {
-                redraw_requested = true;
-                splitter_pos = get_animation_value(splitter_anim);  // removed the clamp because we want to close smoothly. Will this cause problems? Not sure
-            } else if editor_closing_id >= 0 {
-                finish_closing_editor();
-            }
-            if editors.expanded {
-                if editors.active == editors.left  && !values_are_close(splitter_anim.target, 0.9) then editors_start_moving_splitter(0.9);
-                if editors.active == editors.right && !values_are_close(splitter_anim.target, 0.1) then editors_start_moving_splitter(0.1);
-            }
+            case .Single;
+                editors_snap_splitter(0.5);
+                draw_editor(editors.left, client_area, status_bar_height, .editor_single);
+                active_pane_rect = client_area;
 
-            split_x := client_area.w * splitter_pos;
-            left_rect, right_rect := cut_left(client_area, split_x, margin = 2);
+            case .Double;
+                // Drag splitter
+                if ui.active == .editor_splitter {
+                    editors_snap_splitter((mouse.pointer.x - screen.x) / screen.w);
+                    editors.expanded = false;
+                }
+                if !values_are_close(splitter_pos, splitter_anim.target) {
+                    redraw_requested = true;
+                    splitter_pos = get_animation_value(splitter_anim);  // removed the clamp because we want to close smoothly. Will this cause problems? Not sure
+                } else if editor_closing_id >= 0 {
+                    finish_closing_editor();
+                }
+                if editors.expanded {
+                    if editors.active == editors.left  && !values_are_close(splitter_anim.target, 0.9) then editors_start_moving_splitter(0.9);
+                    if editors.active == editors.right && !values_are_close(splitter_anim.target, 0.1) then editors_start_moving_splitter(0.1);
+                }
 
-            if just_dropped_file {
-                if mouse_pointer_is_within(left_rect)  then editors_open_file(just_dropped_file, .left);
-                if mouse_pointer_is_within(right_rect) then editors_open_file(just_dropped_file, .right);
-                just_dropped_file = "";
-            }
+                split_x := client_area.w * splitter_pos;
+                left_rect, right_rect := cut_left(client_area, split_x, margin = 2);
 
-            draw_editor(editors.left,  left_rect,  status_bar_height, .editor_left,  screen);
-            draw_editor(editors.right, right_rect, status_bar_height, .editor_right, screen);
+                if just_dropped_file {
+                    if mouse_pointer_is_within(left_rect)  then editors_open_file(just_dropped_file, .left);
+                    if mouse_pointer_is_within(right_rect) then editors_open_file(just_dropped_file, .right);
+                    just_dropped_file = "";
+                }
 
-            active_pane_rect = ifx editors.active == editors.left then left_rect else right_rect;
+                draw_editor(editors.left,  left_rect,  status_bar_height, .editor_left,  screen);
+                draw_editor(editors.right, right_rect, status_bar_height, .editor_right, screen);
 
-            splitter_y := ifx config.settings.status_bar_position == .bottom then left_rect.y + status_bar_height else 0;
-            splitter_rect := make_rect(left_rect.x + left_rect.w, splitter_y, 2, left_rect.h - status_bar_height);
-            draw_splitter(splitter_rect, split_x, .editor_splitter);
+                active_pane_rect = ifx editors.active == editors.left then left_rect else right_rect;
+
+                splitter_y := ifx config.settings.status_bar_position == .bottom then left_rect.y + status_bar_height else 0;
+                splitter_rect := make_rect(left_rect.x + left_rect.w, splitter_y, 2, left_rect.h - status_bar_height);
+                draw_splitter(splitter_rect, split_x, .editor_splitter);
+        }
+
+        maybe_draw_color_preview_panel();
+        maybe_draw_build_panel();
+
+        if #complete active_global_widget == {
+            case .editors;                  // already done
+            case .open_file_dialog;         draw_open_file_dialog();
+            case .delete_file_dialog;       draw_delete_file_dialog();
+            case .finder;                   draw_finder();
+            case .go_to_line_dialog;        draw_go_to_line_dialog(active_pane_rect, status_bar_height);
+            case .switch_to_project_dialog; draw_switch_to_project_dialog();
+            case .unsaved_buffers_dialog;   draw_unsaved_buffers_dialog();
+            case .confirm_overwrite_dialog; draw_confirm_overwrite_dialog();
+            case .commands_dialog;          draw_commands_dialog();
+            case .theme_dialog;             draw_theme_dialog();
+            case .language_dialog;          draw_language_dialog();
+        }
+
+        draw_user_messages(client_area, status_bar_height);
     }
-
-    maybe_draw_color_preview_panel();
-    maybe_draw_build_panel();
-
-    if #complete active_global_widget == {
-        case .editors;                  // already done
-        case .open_file_dialog;         draw_open_file_dialog();
-        case .delete_file_dialog;       draw_delete_file_dialog();
-        case .finder;                   draw_finder();
-        case .go_to_line_dialog;        draw_go_to_line_dialog(active_pane_rect, status_bar_height);
-        case .switch_to_project_dialog; draw_switch_to_project_dialog();
-        case .unsaved_buffers_dialog;   draw_unsaved_buffers_dialog();
-        case .confirm_overwrite_dialog; draw_confirm_overwrite_dialog();
-        case .commands_dialog;          draw_commands_dialog();
-        case .theme_dialog;             draw_theme_dialog();
-        case .language_dialog;          draw_language_dialog();
-    }
-
-    draw_user_messages(client_area, status_bar_height);
 
     // Reset UI state after drawing
     if (!mouse.left.is_down || mouse.left.just_released) && (!mouse.middle.is_down || mouse.middle.just_released) {

@@ -27,10 +27,8 @@ CSD: CSD_Data;
 recalculate_rects :: (new_width: int, new_height: int) {
     using CSD;
 
-    if !enabled {
-        screen = make_rect(0, 0, new_width, new_height);
-        return;
-    }
+    screen = make_rect(0, 0, new_width, new_height);
+    if !enabled return;
 
     draw_area = make_rect(border_size, border_size, new_width, new_height);
     screen = expand(draw_area, xx border_size);
@@ -39,8 +37,9 @@ recalculate_rects :: (new_width: int, new_height: int) {
     title_bar_padding = xx floor(4 * dpi_scale);
     title_bar_height = xx floor(font_ui_line_height + 2 * title_bar_margin + 2 * title_bar_padding + 2);
     title_area, client_area = cut_top(draw_area, xx title_bar_height);
-    title_area_win = gl_to_window_rect(title_area, draw_area);
-    client_area_win = gl_to_window_rect(client_area, draw_area);
+    // title_area_win = gl_to_window_rect(title_area, draw_area);
+    // client_area_win = gl_to_window_rect(client_area, draw_area);
+    title_area_win, client_area_win = cut_bottom(draw_area, xx title_bar_height);
 
     log("title_area=% title_area_win=%", title_area, title_area_win);
     log("client_area=% client_area_win=%", client_area, client_area_win);
