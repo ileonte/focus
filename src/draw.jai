@@ -72,8 +72,8 @@ draw_frame :: () {
                 draw_splitter(splitter_rect, split_x, .editor_splitter);
         }
 
-        maybe_draw_color_preview_panel();
-        maybe_draw_build_panel();
+        maybe_draw_color_preview_panel(client_area);
+        maybe_draw_build_panel(client_area);
 
         if #complete active_global_widget == {
             case .editors;                  // already done
@@ -312,7 +312,7 @@ draw_user_messages :: (main_area: Rect, status_bar_height: float) {
     }
 }
 
-maybe_draw_color_preview_panel :: () {
+maybe_draw_color_preview_panel :: (screen: Rect) {
     if config.settings.color_preview_popup == .disabled return;
 
     editor, buffer := get_active_editor_and_buffer();
@@ -461,7 +461,7 @@ maybe_draw_color_preview_panel :: () {
 
 }
 
-maybe_draw_build_panel :: () {
+maybe_draw_build_panel :: (screen: Rect) {
     if !build_panel_is_shown return;
 
     // Drag build panel title bar first before drawing
