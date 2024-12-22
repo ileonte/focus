@@ -400,10 +400,7 @@ __panic_due_to_runtime_call_of_compile_time_procedure :: (line_number: s64, file
 
         first_thread_context.temporary_storage = ts;
 
-        first_thread_context.base.context_info = type_info(Context);
-
         dummy_context: Context;
-        dummy_context.base.context_info = type_info(Context);
         push_context dummy_context {
             // Allocator should not rely on a good context for STARTUP. For other modes, it's fine.
             first_thread_context.allocator.data = runtime_support_default_allocator_proc(.STARTUP, 0, 0, null, null);
@@ -472,6 +469,8 @@ debug_break :: () #no_context {
             #asm { int 0x41; }
         } else #if CPU == .X64 {
             #asm { int3; }
+        } else #if CPU == .ARM64 {
+            #bytes .[0b1101_0100, 0b001_0_0000, 0x00, 0x20]; // BRK 0x01: 11 bit instruction, 16 bit immediate, 5 bit unused.
         } else #if OS == .WASM {
             wasm_debug_break :: () #foreign; // You will need to provide this function as JS code in your WASM environment. :JaiWasm:
             wasm_debug_break();
@@ -522,9 +521,7 @@ one_time_init :: (synch_value: *s32, to_insert: Code) #expand {
 // if you make an error of some kind, even a simple one like an undeclared identifier,
 // you won't get a helpful error message.
 Context_Base :: struct {
-    // @Incomplete: Initialize this to type_of(Context) to make sure it is not null when someone creates a default context!
-    // :InitContextInfo
-    context_info:  *Type_Info_Struct; // Allow libs or DLLs to see what context we are passing them.
+    context_info:  *Type_Info_Struct; // Allow libs or DLLs to see what context we are passing them. Will always be initialized to type_of(Context).
 
     thread_index   : u32;
 
@@ -692,11 +689,11 @@ init_synchronization :: () #no_context {
             #if CPU == .X64 {
                 SYS_futex :: 202;
                 #asm SYSCALL_SYSRET {
-                    mov.q call: gpr === a, SYS_futex;
-                    mov.q uaddr: gpr === di, futex_lock;
+                    mov.q call:     gpr === a, SYS_futex;
+                    mov.q uaddr:    gpr === di, futex_lock;
                     mov.q futex_op: gpr === si, op;
-                    mov.q value: gpr === d, val;
-                    mov.q timeout: gpr === 10, 0;
+                    mov.q value:    gpr === d, val;
+                    mov.q timeout:  gpr === 10, 0;
 
                     syscall t1:, t2:, call;
                 }

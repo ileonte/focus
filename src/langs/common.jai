@@ -90,36 +90,40 @@ is_hex :: inline (c: u8) -> bool {
 is_white_space :: inline (char : u8) -> bool #no_aoc {
     result : u32 = ---;
 
-    // Should be in register, not immediate
-    white_spaces : u64 = (#char " "  <<  0)  // space.
-                       | (#char "\t" <<  8)  // horizontal tab.
-                       | (#char "\n" << 16)  // line feed.
-                       | (#char "\r" << 24)  // carriage return.
-                       | (0x0C       << 32)  // form feed.    "\f" is not supported in jai at the time of writing
-                       | (0x0B       << 40); // vertical tab. "\v" is not supported in jai at the time of writing
+    #if CPU == .X64 {
+        // Should be in register, not immediate
+        white_spaces : u64 = (#char " "  <<  0)  // space.
+                        | (#char "\t" <<  8)  // horizontal tab.
+                        | (#char "\n" << 16)  // line feed.
+                        | (#char "\r" << 24)  // carriage return.
+                        | (0x0C       << 32)  // form feed.    "\f" is not supported in jai at the time of writing
+                        | (0x0B       << 40); // vertical tab. "\v" is not supported in jai at the time of writing
 
-    #asm {
-        chars  : vec === 0;
-        mask   : vec === 1;
-        spaces : vec === 2;
-        result       === a;
-        white_spaces === b;
-        char         === c;
+        #asm {
+            chars  : vec === 0;
+            mask   : vec === 1;
+            spaces : vec === 2;
+            result       === a;
+            white_spaces === b;
+            char         === c;
 
-        movq spaces, white_spaces;
+            movq spaces, white_spaces;
 
-        pxor mask, mask;
+            pxor mask, mask;
 
-        // Fill chars with c
-        pinsrb chars, char, 0;
-        pshufb chars, mask;
+            // Fill chars with c
+            pinsrb chars, char, 0;
+            pshufb chars, mask;
 
-        pcmpeqb chars, spaces;
+            pcmpeqb chars, spaces;
 
-        pmovmskb result, chars;
+            pmovmskb result, chars;
+        }
+
+        return cast,no_check(bool) result;
+    } else {
+        return char == #char " " || char == #char "\t" || char == #char "\n" || char == #char "\r" || char == 0x0C || char == 0x0B;
     }
-
-    return cast,no_check(bool) result;
 }
 
 at_string :: (using tokenizer: *Tokenizer, a: string, $case_sensitive := true) -> bool {

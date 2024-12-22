@@ -319,6 +319,16 @@ dump_debug_info :: (display: *Display, sb: *String_Builder) {
         case XCB_Display;     print_to_builder(sb, "%.%\n", display.base.type, display.xcb);
         case;                 print_to_builder(sb, "%.%\n", display.base.type, display.base);
     }
+
+    if display.base.windows.count {
+        w := *display.base.windows[0];
+        if w.base.type == {
+            case Wayland_Window; print_to_builder(sb, "%.%\n", w.base.type, w.wld);
+            case X11_Window;     print_to_builder(sb, "%.%\n", w.base.type, w.x11);
+            case XCB_Window;     print_to_builder(sb, "%.%\n", w.base.type, w.xcb);
+            case;                print_to_builder(sb, "%.%\n", w.base.type, w.base);
+        }
+    }
 }
 
 #scope_module;

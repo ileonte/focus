@@ -37,22 +37,48 @@ build :: () {
 
     for arg: args {
         if arg == {
-          case "release";
-            optimized = true;
-            build_dir = "build_release";
-            set_optimization(*options, .VERY_OPTIMIZED);
-            options.llvm_options.enable_split_modules = false;
-            options.array_bounds_check = .ON;
-            options.null_pointer_check = .ON;
-            options.arithmetic_overflow_check = .OFF;
-          case "debug";
-          case "no_output";
-            options.output_type = .NO_OUTPUT;
-          case "windows7";
-            windows7 = true;
-            options.output_executable_name = "focus_windows7";
-          case;
-            compiler_report(tprint("Command-line argument #%, '%', is invalid. Valid options are: 'debug', 'release'.\n", it_index+1, arg));
+            case "debug"; // noop
+
+            case "release";
+                optimized = true;
+                build_dir = "build_release";
+                set_optimization(*options, .VERY_OPTIMIZED);
+                options.llvm_options.enable_split_modules = false;
+                options.array_bounds_check = .ON;
+                options.null_pointer_check = .ON;
+                options.arithmetic_overflow_check = .OFF;
+
+            case "no_output";
+                options.output_type = .NO_OUTPUT;
+
+            case "windows7";
+                windows7 = true;
+                options.output_executable_name = "focus_windows7";
+
+            case "cross-arm64";
+                if OS != .LINUX || CPU != .X64 {
+                    // We only support Linux-X64 to Linux-ARM64 cross-compiling
+                    compiler_report("ARM64 cross-compile is currently supported for Linux-X64-to-Linux-ARM64 only");
+                }
+
+                options.backend = .LLVM;
+                options.cpu_target = .ARM64;
+                options.llvm_options.target_system_triple = "aarch64-linux-gnu";
+                options.use_custom_link_command = true;
+
+                /*
+                * `Basic/Int128.jai` has a bunch of codepaths that generate tons of overflow
+                * errors when building for targets other than x64. We could vendor the `Basic`
+                * module and fix those but I don't really want to do that (we already have a
+                * bunch of local copies for other modules, adding `Basic` would be too much).
+                * For now we just disable overflow checks.
+                *
+                *  - ileonte, 2024.12.23
+                */
+                options.arithmetic_overflow_check = .OFF;
+
+            case;
+                compiler_report(tprint("Command-line argument #%, '%', is invalid. Valid options are: 'debug', 'release'.\n", it_index+1, arg));
         }
     }
 
@@ -115,11 +141,22 @@ build :: () {
 
             case .PHASE;
                 phase_message := cast(*Message_Phase) message;
-                if phase_message.phase == .ALL_TARGET_CODE_BUILT {
-                    if options.output_type == .NO_OUTPUT  exit(0);
-                    check_settings();
-                }
+                if phase_message.phase == {
+                    case .ALL_TARGET_CODE_BUILT;
+                        if options.output_type == .NO_OUTPUT  exit(0);
+                        check_settings();
 
+                    case .READY_FOR_CUSTOM_LINK_COMMAND;
+                        #if OS == {
+                            case .LINUX; linux_handle_cross_compile_link(message.workspace, phase_message);
+                            case;
+                                /*
+                                * We expect `READY_FOR_CUSTOM_LINK_COMMAND` to be generated only when cross-compiling.
+                                * Error out here just to be sure we didn't mess something up.
+                                */
+                                compiler_report("Error: Got `READY_FOR_CUSTOM_LINK_COMMAND` but we're not handling it for this OS\n");
+                        }
+                }
             case .COMPLETE;
                 m := cast(*Message_Complete) message;
                 if m.error_code == .COMPILATION_FAILED then failed = true;
@@ -278,6 +315,8 @@ settings_info: struct {
 #if OS == .WINDOWS {
     #import "Ico_File";
     #import "Windows_Resources";
+} else #if OS == .LINUX {
+    #load "src/platform/linux/build.jai";
 } else #if OS == .MACOS {
     INFO_PLIST_CONTENTS :: #string STRING
 <?xml version="1.0" ?>

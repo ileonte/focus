@@ -230,17 +230,17 @@ wl_display_poll :: (display: *Wayland_Display, timeout: s32) -> wayland_events :
     pfd: [3]pollfd;
     pfd[0].fd = wlfd;
     pfd[0].events = POLLIN;
-    pfd[1].fd = timers_epfd;
+    pfd[1].fd = display.base.loop_wakeup_event;
     pfd[1].events = POLLIN;
-    pfd[2].fd = display.base.loop_wakeup_event;
+    pfd[2].fd = timers_epfd;
     pfd[2].events = POLLIN;
 
-    ret := poll(pfd.data, xx pfd.count, timeout);
+    ret := poll(pfd.data, 3, timeout);
     if ret <= 0 return;
 
     has_wayland_events    := (pfd[0].revents & POLLIN) == POLLIN;
-    has_timer_events      := (pfd[1].revents & POLLIN) == POLLIN;
-    has_loop_wakeup_event := (pfd[2].revents & POLLIN) == POLLIN;
+    has_loop_wakeup_event := (pfd[1].revents & POLLIN) == POLLIN;
+    has_timer_events      := (pfd[2].revents & POLLIN) == POLLIN;
 
     if has_loop_wakeup_event  consume_loop_wakeup_event(display);
     if has_timer_events       timers_tick();

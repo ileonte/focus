@@ -97,9 +97,9 @@ DONE;
     active_backend := LD.active_backend();
     assert(active_backend != .UNINITIALIZED);
 
-    cursor_timer = LD.timer_create();
-    refresh_timer = LD.timer_create();
-    xdg_reap_timer = LD.timer_create(cb = (tid: LD.Timer, data: *void) {
+    cursor_timer = LD.timer_create(name = "Cursor blink timer");
+    refresh_timer = LD.timer_create(name = "Refresh timer");
+    xdg_reap_timer = LD.timer_create(name = "XDG reap timer", cb = (tid: LD.Timer, data: *void) {
         XDG.reap_child_processes();
     });
     LD.timer_start(xdg_reap_timer, 500, 500);
