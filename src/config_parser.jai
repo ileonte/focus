@@ -1460,7 +1460,7 @@ Config_Parser :: struct {
     parse_as_theme         := false;
 }
 
-#insert -> string {
+#insert #run,stallable -> string {
     b: String_Builder;
 
     // Section
@@ -1500,7 +1500,7 @@ Config_Parser :: struct {
     append(*b, "}\n");
 
     return builder_to_string(*b);
-}
+};
 
 Seen_Setting :: struct {
     using seen_line: Seen_Line;

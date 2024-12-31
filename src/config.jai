@@ -848,8 +848,8 @@ EXAMPLE_PROJECT_CONFIG_NAME :: "example-project.focus-config";
         return data_with_replaced_version;
     }
 
-    DEFAULT_CONFIG_FILE_DATA  :: #run read_default_config_data(DEFAULT_CONFIG_NAME);
-    EXAMPLE_PROJECT_FILE_DATA :: #run read_default_config_data(EXAMPLE_PROJECT_CONFIG_NAME);
+    DEFAULT_CONFIG_FILE_DATA  :: #run,stallable read_default_config_data(DEFAULT_CONFIG_NAME);
+    EXAMPLE_PROJECT_FILE_DATA :: #run,stallable read_default_config_data(EXAMPLE_PROJECT_CONFIG_NAME);
 
     DEFAULT_CONFIG :: #run,stallable -> Config {
         result := parse_config("Default Config", DEFAULT_CONFIG_NAME, DEFAULT_CONFIG_FILE_DATA);
