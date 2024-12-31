@@ -26,12 +26,21 @@ off_t    :: s64;
 
 #if OS == {
     case .LINUX;
-        #load "bindings/linux/base.jai";
-        #load "bindings/linux/stdio.jai";
-        #load "bindings/linux/stdlib.jai";
-        #load "bindings/linux/syscall.jai";
-        #load "bindings/linux/pthread.jai";
-        #load "bindings/linux/resource.jai";
+        #if CPU == .ARM64 {
+            #load "bindings/linux/arm64/base.jai";
+            #load "bindings/linux/arm64/stdio.jai";
+            #load "bindings/linux/arm64/stdlib.jai";
+            #load "bindings/linux/arm64/syscall.jai";
+            #load "bindings/linux/arm64/pthread.jai";
+            #load "bindings/linux/arm64/resource.jai";
+        } else {
+            #load "bindings/linux/base.jai";
+            #load "bindings/linux/stdio.jai";
+            #load "bindings/linux/stdlib.jai";
+            #load "bindings/linux/syscall.jai";
+            #load "bindings/linux/pthread.jai";
+            #load "bindings/linux/resource.jai";
+        }
 
     case .MACOS;
         SYSCALL_MACH_BASE :: 0x1000000;

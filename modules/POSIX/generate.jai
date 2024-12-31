@@ -24,6 +24,7 @@ ENABLE_GNU_SOURCE :: true; // Enable this and re-run the generator to get Linuxâ
 }
 
 already_generated: Table(string, bool);
+cross_compiler_sysroot: string;
 
 generate_bindings :: (args: [] string) -> bool {
     target_android := array_find(args, "-android");
@@ -38,7 +39,11 @@ generate_bindings :: (args: [] string) -> bool {
 
     bindings_directory: string;
     if os_target == {
-        case .LINUX;   bindings_directory = "bindings/linux";
+        case .LINUX;
+            if cpu_target == {
+                case .X64;   bindings_directory = "bindings/linux/x64";
+                case .ARM64; bindings_directory = "bindings/linux/arm64";
+            }
         case .MACOS;
             if cpu_target == {
                 case .X64;   bindings_directory = "bindings/macos/x64";
@@ -52,9 +57,21 @@ generate_bindings :: (args: [] string) -> bool {
     }
     assert(bindings_directory != "", "Unsupported OS/CPU");
 
+    success := true;
+
+    if os_target != OS || cpu_target != CPU {
+        passed_cross_sysroot, cross_sysroot_index := array_find(args, "-cross_compiler_sysroot");
+        if passed_cross_sysroot && cross_sysroot_index < args.count-1 {
+            cross_compiler_sysroot = args[cross_sysroot_index + 1];
+        }
+        else {
+            log_error("Since we're trying to generate bindings for a cross-compile target, please pass a system root folder with -cross_compiler_sysroot.");
+            success = false;
+        }
+    }
+
     make_directory_if_it_does_not_exist(bindings_directory, recursive = true);
 
-    success := true;
     success &&= generate_stdio_bindings(   os_target, cpu_target, bindings_directory);
     success &&= generate_stdlib_bindings(  os_target, cpu_target, bindings_directory);
     success &&= generate_syscall_bindings( os_target, cpu_target, bindings_directory);
@@ -72,14 +89,14 @@ generate_base_bindings :: (os: Operating_System_Tag, cpu: CPU_Tag, bindings_dire
 
     options.generate_printf_wrappers = false;
 
-    libc_path, libc_platform_path := get_libc_paths(os, cpu);
+    libc_path, libc_platform_path := posix_get_libc_paths(os, cpu);
 
-    sys_path := ifx os == .LINUX then libc_platform_path else libc_path;
+    sys_path := ifx os == .LINUX && cpu == CPU then libc_platform_path else libc_path;
 
     if os == .LINUX {
         array_add(*options.system_library_names,
-            "libdl", // dlopen, etc.
-            "librt", // shm_*
+            "libdl.so.2", // dlopen, etc.
+            "librt.so.1", // shm_*
         );
     }
     if os == .ANDROID {
@@ -242,6 +259,17 @@ generate_base_bindings :: (os: Operating_System_Tag, cpu: CPU_Tag, bindings_dire
             "_xmmreg",
             "timex",
         );
+
+        if cpu == .ARM64 {
+            array_add(*options.system_types_to_include,
+                "elf_fpregset_t",
+                "elf_greg_t",
+                "elf_gregset_t",
+                "idtype_t",
+                "ipc_perm",
+                "shmid_ds",
+            );
+        }
     }
     if os == .ANDROID {
         array_add(*options.system_types_to_include,
@@ -506,11 +534,11 @@ generate_stdio_bindings :: (os: Operating_System_Tag, cpu: CPU_Tag, bindings_dir
     output_path := tprint("%/stdio.jai", bindings_directory);
     options := get_common_options(os, cpu);
 
-    libc_path, libc_platform_path := get_libc_paths(os, cpu);
-    sys_path := ifx os == .LINUX then libc_platform_path else libc_path;
+    libc_path, libc_platform_path := posix_get_libc_paths(os, cpu);
+    sys_path := ifx os == .LINUX && cpu == CPU then libc_platform_path else libc_path;
 
     if os == .LINUX {
-        array_add(*options.system_library_names, "librt"); // aio_*
+        array_add(*options.system_library_names, "librt.so.1"); // aio_*
     }
     array_add(*options.source_files,
         tprint("%/stdio.h", libc_path),
@@ -572,6 +600,16 @@ generate_stdio_bindings :: (os: Operating_System_Tag, cpu: CPU_Tag, bindings_dir
             "__mbstate_t",
             "_IO_cookie_io_functions_t", // fopencookie
         );
+
+        if cpu == .ARM64 {
+            array_add(*options.system_types_to_include,
+                "cookie_close_function_t",
+                "cookie_io_functions_t",
+                "cookie_read_function_t",
+                "cookie_seek_function_t",
+                "cookie_write_function_t",
+            );
+        }
     }
     #if ENABLE_GNU_SOURCE {
         array_add(*options.system_types_to_include,
@@ -584,7 +622,12 @@ generate_stdio_bindings :: (os: Operating_System_Tag, cpu: CPU_Tag, bindings_dir
 
     options.visitor = stdio_visitor;
     if os == {
-        case .LINUX; options.footer = sprint(STDIO_LINUX_FOOTER_TEMPLATE, ENABLE_GNU_SOURCE);
+        case .LINUX;
+            options.footer = sprint(
+                STDIO_LINUX_FOOTER_TEMPLATE,
+                ENABLE_GNU_SOURCE,
+                ifx cpu == .ARM64 then "" else STDIO_LINUX_FOOTER_SYSCALL_WRAPPERS,
+            );
         case .MACOS; options.footer = STDIO_MACOS_FOOTER;
     }
 
@@ -603,6 +646,12 @@ _IO_FILE :: struct {};
 #if !USE_GNU {
 ftello64 :: ftello;
 }
+
+%
+
+END
+
+STDIO_LINUX_FOOTER_SYSCALL_WRAPPERS :: #string END
 
 // for some reason a handfull of syscalls on Linux arent available in libc.so by default
 // (they exist as a static link in) so we need to wrap syscall for these to work...
@@ -637,6 +686,16 @@ stdio_visitor :: (decl: *Declaration, parent_decl: *Declaration) -> Declaration_
             decl.decl_flags |= .OMIT_FROM_OUTPUT;
             return .STOP;
         }
+
+        // ARM64 hack: x64 Linux bindings don't include vsnprintf and friends, so I won't here.
+        if decl.kind == .FUNCTION &&
+           ( ( starts_with(decl.name, "v") &&
+               ( ends_with(decl.name, "printf") || ends_with(decl.name, "scanf") ) ) ||
+             contains(decl.name, "vprintf") )
+        {
+            decl.decl_flags |= .OMIT_FROM_OUTPUT;
+            return .STOP;
+        }
     } else {
         // Rename the members of stat_t to be the same on all platforms, just to reduce the number of "#if OS" clauses needed
         if parent_decl.kind == .STRUCT && (parent_decl.output_name == "stat_t" || parent_decl.output_name == "stat64_t") {
@@ -660,7 +719,7 @@ generate_stdlib_bindings :: (os: Operating_System_Tag, cpu: CPU_Tag, bindings_di
     output_path := tprint("%/stdlib.jai", bindings_directory);
     options := get_common_options(os, cpu);
 
-    libc_path := get_libc_paths(os, cpu);
+    libc_path := posix_get_libc_paths(os, cpu);
 
     array_add(*options.source_files,
         tprint("%/stdlib.h", libc_path),
@@ -712,8 +771,8 @@ generate_syscall_bindings :: (os: Operating_System_Tag, cpu: CPU_Tag, bindings_d
     output_path := tprint("%/syscall.jai", bindings_directory);
     options := get_common_options(os, cpu);
 
-    libc_path, libc_platform_path := get_libc_paths(os, cpu);
-    sys_path := ifx os == .LINUX then libc_platform_path else libc_path;
+    libc_path, libc_platform_path := posix_get_libc_paths(os, cpu);
+    sys_path := ifx os == .LINUX && cpu == CPU then libc_platform_path else libc_path;
 
     array_add(*options.source_files,
         tprint("%/unistd.h", libc_path), // for syscall()
@@ -749,10 +808,17 @@ generate_pthread_bindings :: (os: Operating_System_Tag, cpu: CPU_Tag, bindings_d
     options := get_common_options(os, cpu);
 
     if os == .LINUX {
-        array_insert_at(*options.libnames, "libpthread.so.0", 0);
+        array_insert_at(*options.system_library_names, "libpthread.so.0", 0);
+
+        if cpu == .ARM64 {
+            array_add(
+                *options.system_library_paths,
+                tprint("%/aarch64-linux-gnu/libc/lib64", cross_compiler_sysroot),
+            );
+        }
     }
 
-    libc_path := get_libc_paths(os, cpu);
+    libc_path := posix_get_libc_paths(os, cpu);
 
     array_add(*options.source_files,
         tprint("%/pthread.h",   libc_path),
@@ -839,8 +905,8 @@ generate_resource_bindings :: (os: Operating_System_Tag, cpu: CPU_Tag, bindings_
     output_path := tprint("%/resource.jai", bindings_directory);
     options := get_common_options(os, cpu);
 
-    libc_path, libc_platform_path := get_libc_paths(os, cpu);
-    if os == .LINUX {
+    libc_path, libc_platform_path := posix_get_libc_paths(os, cpu);
+    if os == .LINUX && cpu == CPU {
         array_add(*options.source_files, tprint("%/sys/resource.h", libc_platform_path));
     } else {
         array_add(*options.source_files, tprint("%/sys/resource.h", libc_path));
@@ -958,7 +1024,7 @@ generate_sysctl_bindings :: (os: Operating_System_Tag, cpu: CPU_Tag, bindings_di
     output_path := tprint("%/sysctl.jai", bindings_directory);
     options := get_common_options(os, cpu);
 
-    libc_path := get_libc_paths(os, cpu);
+    libc_path := posix_get_libc_paths(os, cpu);
     array_add(*options.source_files, tprint("%/sys/sysctl.h", libc_path));
 
     array_add(*options.system_types_to_include, "extern_proc", "P_TRACED", "pgrp", "session", "proc", "vmspace");
@@ -989,6 +1055,26 @@ get_common_options :: (os: Operating_System_Tag, cpu: CPU_Tag) -> Generate_Bindi
         case .LINUX;
             #if ENABLE_GNU_SOURCE {
                 array_add(*options.extra_clang_arguments, "-D_GNU_SOURCE");
+            }
+
+            if cpu == .ARM64 {
+                array_add(*options.extra_clang_arguments,
+                    "-target", "aarch64-unknown-linux-gnu",
+                    "-isysroot", cross_compiler_sysroot,
+                );
+
+                libc_path, libc_platform_path := posix_get_libc_paths(os, cpu);
+                array_add(
+                    *options.system_include_paths,
+                    libc_path,
+                    libc_platform_path,
+                    tprint("%/lib/gcc/aarch64-linux-gnu/14.2.0/include", cross_compiler_sysroot),
+                );
+                array_add(
+                    *options.system_library_paths,
+                    tprint("%/lib",                          cross_compiler_sysroot),
+                    tprint("%/aarch64-linux-gnu/libc/lib64", cross_compiler_sysroot),
+                );
             }
         case .MACOS;
             sdk_path := get_macos_sdk_path();
@@ -1110,6 +1196,22 @@ posix_visitor :: (decl: *Declaration, parent_decl: *Declaration) -> Declaration_
     }
 
     return .RECURSE;
+}
+
+posix_get_libc_paths :: (os := OS, cpu := CPU) -> libc_path: string, libc_platform_path: string, success: bool {
+    libc_path, libc_platform_path: string;
+    success: bool;
+
+    if cpu == .ARM64 && CPU != cpu {
+        libc_path          = tprint("%/aarch64-linux-gnu/libc/usr/include/", cross_compiler_sysroot);
+        libc_platform_path = tprint("%/aarch64-linux-gnu/include",           cross_compiler_sysroot);
+        success = true;
+    }
+    else {
+        libc_path, libc_platform_path, success = get_libc_paths(os, cpu);
+    }
+
+    return libc_path, libc_platform_path, success;
 }
 
 #import "Toolchains/Android";

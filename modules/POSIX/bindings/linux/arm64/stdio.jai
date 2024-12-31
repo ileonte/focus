@@ -1,7 +1,7 @@
 //
 // This file was auto-generated using the following command:
 //
-// jai modules/POSIX/generate.jai
+// jai generate.jai - -arm64 -cross_compiler_sysroot /home/.../Apps/cross-pi-gcc-14.2.0-64
 //
 
 
@@ -11,6 +11,10 @@ _IOFBF :: 0;
 _IOLBF :: 1;
 _IONBF :: 2;
 
+BUFSIZ :: 8192;
+
+EOF :: -1;
+
 SEEK_SET :: 0;
 SEEK_CUR :: 1;
 SEEK_END :: 2;
@@ -19,6 +23,16 @@ SEEK_DATA :: 3;
 SEEK_HOLE :: 4;
 
 P_tmpdir :: "/tmp";
+
+_PRINTF_NAN_LEN_MAX :: 4;
+
+RENAME_NOREPLACE :: 1 << 0;
+RENAME_EXCHANGE :: 1 << 1;
+RENAME_WHITEOUT :: 1 << 2;
+
+__O_DIRECTORY :: 0x4000 /* 040000 */;
+__O_NOFOLLOW :: 0x8000 /* 0100000 */;
+__O_DIRECT :: 0x10000 /* 0200000 */;
 
 __O_LARGEFILE :: 0;
 
@@ -51,13 +65,7 @@ O_FSYNC :: O_SYNC;
 
 O_ASYNC :: 0x2000 /* 020000 */;
 
-__O_DIRECTORY :: 0x10000 /* 0200000 */;
-
-__O_NOFOLLOW :: 0x20000 /* 0400000 */;
-
 __O_CLOEXEC :: 0x80000 /* 02000000 */;
-
-__O_DIRECT :: 0x4000 /* 040000 */;
 
 __O_NOATIME :: 0x40000 /* 01000000 */;
 
@@ -160,8 +168,10 @@ F_SEAL_SEAL :: 0x0001;
 F_SEAL_SHRINK :: 0x0002;
 F_SEAL_GROW :: 0x0004;
 F_SEAL_WRITE :: 0x0008;
+F_SEAL_FUTURE_WRITE :: 0x0010;
 
-RWF_WRITE_LIFE_NOT_SET :: 0;
+RWH_WRITE_LIFE_NOT_SET :: 0;
+RWF_WRITE_LIFE_NOT_SET :: RWH_WRITE_LIFE_NOT_SET;
 RWH_WRITE_LIFE_NONE :: 1;
 RWH_WRITE_LIFE_SHORT :: 2;
 RWH_WRITE_LIFE_MEDIUM :: 3;
@@ -190,6 +200,8 @@ SYNC_FILE_RANGE_WRITE :: 2;
 
 SYNC_FILE_RANGE_WAIT_AFTER :: 4;
 
+SYNC_FILE_RANGE_WRITE_AND_WAIT :: SYNC_FILE_RANGE_WRITE | SYNC_FILE_RANGE_WAIT_BEFORE | SYNC_FILE_RANGE_WAIT_AFTER;
+
 SPLICE_F_MOVE :: 1;
 SPLICE_F_NONBLOCK :: 2;
 
@@ -197,26 +209,6 @@ SPLICE_F_MORE :: 4;
 SPLICE_F_GIFT :: 8;
 
 MAX_HANDLE_SZ :: 128;
-
-AT_FDCWD :: -100;
-
-AT_SYMLINK_NOFOLLOW :: 0x100;
-AT_REMOVEDIR :: 0x200;
-
-AT_SYMLINK_FOLLOW :: 0x400;
-
-AT_NO_AUTOMOUNT :: 0x800;
-
-AT_EMPTY_PATH :: 0x1000;
-
-AT_EACCESS :: 0x200;
-
-_STAT_VER_KERNEL :: 0;
-_STAT_VER_LINUX :: 1;
-
-_MKNOD_VER_LINUX :: 0;
-
-_STAT_VER :: _STAT_VER_LINUX;
 
 __S_IFMT :: 0xf000 /* 0170000 */;
 
@@ -278,6 +270,24 @@ W_OK :: 2;
 X_OK :: 1;
 F_OK :: 0;
 
+AT_FDCWD :: -100;
+
+AT_SYMLINK_NOFOLLOW :: 0x100;
+AT_REMOVEDIR :: 0x200;
+
+AT_SYMLINK_FOLLOW :: 0x400;
+
+AT_NO_AUTOMOUNT :: 0x800;
+
+AT_EMPTY_PATH :: 0x1000;
+AT_STATX_SYNC_TYPE :: 0x6000;
+AT_STATX_SYNC_AS_STAT :: 0x0000;
+AT_STATX_FORCE_SYNC :: 0x2000;
+AT_STATX_DONT_SYNC :: 0x4000;
+AT_RECURSIVE :: 0x8000;
+
+AT_EACCESS :: 0x200;
+
 F_ULOCK :: 0;
 F_LOCK :: 1;
 F_TLOCK :: 2;
@@ -293,7 +303,35 @@ DEFFILEMODE :: S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH;
 
 S_BLKSIZE :: 512;
 
-_MKNOD_VER :: 0;
+STATX_TYPE :: 0x00000001;
+STATX_MODE :: 0x00000002;
+STATX_NLINK :: 0x00000004;
+STATX_UID :: 0x00000008;
+STATX_GID :: 0x00000010;
+STATX_ATIME :: 0x00000020;
+STATX_MTIME :: 0x00000040;
+STATX_CTIME :: 0x00000080;
+STATX_INO :: 0x00000100;
+STATX_SIZE :: 0x00000200;
+STATX_BLOCKS :: 0x00000400;
+STATX_BASIC_STATS :: 0x000007ff;
+STATX_BTIME :: 0x00000800;
+STATX_MNT_ID :: 0x00001000;
+STATX_DIOALIGN :: 0x00002000;
+
+STATX__RESERVED :: 0x80000000;
+
+STATX_ALL :: 0x00000fff;
+
+STATX_ATTR_COMPRESSED :: 0x00000004;
+STATX_ATTR_IMMUTABLE :: 0x00000010;
+STATX_ATTR_APPEND :: 0x00000020;
+STATX_ATTR_NODUMP :: 0x00000040;
+STATX_ATTR_ENCRYPTED :: 0x00000800;
+STATX_ATTR_AUTOMOUNT :: 0x00001000;
+STATX_ATTR_MOUNT_ROOT :: 0x00002000;
+STATX_ATTR_VERITY :: 0x00100000;
+STATX_ATTR_DAX :: 0x00200000;
 
 TCGETS :: 0x5401;
 TCSETS :: 0x5402;
@@ -459,28 +497,30 @@ _G_fpos64_t :: struct {
     __state: __mbstate_t;
 }
 
-__io_read_fn :: #type (__cookie: *void, __buf: *u8, __nbytes: u64) -> s64 #c_call;
+cookie_read_function_t :: #type (__cookie: *void, __buf: *u8, __nbytes: u64) -> s64 #c_call;
 
-__io_write_fn :: #type (__cookie: *void, __buf: *u8, __n: u64) -> s64 #c_call;
+cookie_write_function_t :: #type (__cookie: *void, __buf: *u8, __nbytes: u64) -> s64 #c_call;
 
-__io_seek_fn :: #type (__cookie: *void, __pos: *s64, __w: s32) -> s32 #c_call;
+cookie_seek_function_t :: #type (__cookie: *void, __pos: *s64, __w: s32) -> s32 #c_call;
 
-__io_close_fn :: #type (__cookie: *void) -> s32 #c_call;
+cookie_close_function_t :: #type (__cookie: *void) -> s32 #c_call;
 
 _IO_cookie_io_functions_t :: struct {
-    read:  __io_read_fn;
-    write: __io_write_fn;
-    seek:  __io_seek_fn;
-    close: __io_close_fn;
+    read:  cookie_read_function_t;
+    write: cookie_write_function_t;
+    seek:  cookie_seek_function_t;
+    close: cookie_close_function_t;
 }
+
+cookie_io_functions_t :: _IO_cookie_io_functions_t;
 
 fpos_t :: _G_fpos_t;
 
 fpos64_t :: _G_fpos64_t;
 
-stdin: *_IO_FILE #elsewhere libc; /* Standard input stream.  */
-stdout: *_IO_FILE #elsewhere libc; /* Standard output stream.  */
-stderr: *_IO_FILE #elsewhere libc; /* Standard error output stream.  */
+stdin: *FILE #elsewhere libc; /* Standard input stream.  */
+stdout: *FILE #elsewhere libc; /* Standard output stream.  */
+stderr: *FILE #elsewhere libc; /* Standard error output stream.  */
 
 /* Remove file FILENAME.  */
 _remove :: (__filename: *u8) -> s32 #foreign libc "remove";
@@ -491,16 +531,26 @@ rename :: (__old: *u8, __new: *u8) -> s32 #foreign libc;
 /* Rename file OLD relative to OLDFD to NEW relative to NEWFD.  */
 renameat :: (__oldfd: s32, __old: *u8, __newfd: s32, __new: *u8) -> s32 #foreign libc;
 
+/* Rename file OLD relative to OLDFD to NEW relative to NEWFD, with
+additional flags.  */
+renameat2 :: (__oldfd: s32, __old: *u8, __newfd: s32, __new: *u8, __flags: u32) -> s32 #foreign libc;
+
+/* Close STREAM.
+
+This function is a possible cancellation point and therefore not
+marked with __THROW.  */
+fclose :: (__stream: *FILE) -> s32 #foreign libc;
+
 tmpfile :: () -> *FILE #foreign libc;
 
 tmpfile64 :: () -> *FILE #foreign libc;
 
 /* Generate a temporary filename.  */
-tmpnam :: (__s: *u8) -> *u8 #foreign libc;
+tmpnam :: (unknown0: *[20] u8) -> *u8 #foreign libc;
 
 /* This is the reentrant variant of `tmpnam'.  The only difference is
 that it does not allow S to be NULL.  */
-tmpnam_r :: (__s: *u8) -> *u8 #foreign libc;
+tmpnam_r :: (__s: *[20] u8) -> *u8 #foreign libc;
 
 /* Generate a unique temporary filename using up to five characters of PFX
 if it is not NULL.  The directory to put this file in is searched for
@@ -510,12 +560,6 @@ If not and if DIR is not NULL, that value is checked.  If that fails,
 P_tmpdir is tried and finally "/tmp".  The storage for the filename
 is allocated by `malloc'.  */
 tempnam :: (__dir: *u8, __pfx: *u8) -> *u8 #foreign libc;
-
-/* Close STREAM.
-
-This function is a possible cancellation point and therefore not
-marked with __THROW.  */
-fclose :: (__stream: *FILE) -> s32 #foreign libc;
 
 /* Flush STREAM, or all streams if STREAM is NULL.
 
@@ -560,7 +604,7 @@ fdopen :: (__fd: s32, __modes: *u8) -> *FILE #foreign libc;
 
 /* Create a new stream that refers to the given magic cookie,
 and uses the given functions for input and output.  */
-fopencookie :: (__magic_cookie: *void, __modes: *u8, __io_funcs: _IO_cookie_io_functions_t) -> *FILE #foreign libc;
+fopencookie :: (__magic_cookie: *void, __modes: *u8, __io_funcs: cookie_io_functions_t) -> *FILE #foreign libc;
 
 /* Create a new stream that refers to a memory buffer.  */
 fmemopen :: (__s: *void, __len: u64, __modes: *u8) -> *FILE #foreign libc;
@@ -847,17 +891,17 @@ fileno :: (__stream: *FILE) -> s32 #foreign libc;
 /* Faster version when locking is not required.  */
 fileno_unlocked :: (__stream: *FILE) -> s32 #foreign libc;
 
-/* Create a new stream connected to a pipe running the given command.
-
-This function is a possible cancellation point and therefore not
-marked with __THROW.  */
-popen :: (__command: *u8, __modes: *u8) -> *FILE #foreign libc;
-
 /* Close a stream opened by popen and return the status of its child.
 
 This function is a possible cancellation point and therefore not
 marked with __THROW.  */
 pclose :: (__stream: *FILE) -> s32 #foreign libc;
+
+/* Create a new stream connected to a pipe running the given command.
+
+This function is a possible cancellation point and therefore not
+marked with __THROW.  */
+popen :: (__command: *u8, __modes: *u8) -> *FILE #foreign libc;
 
 /* Return the name of the controlling terminal.  */
 ctermid :: (__s: *u8) -> *u8 #foreign libc;
@@ -880,13 +924,16 @@ ftrylockfile :: (__stream: *FILE) -> s32 #foreign libc;
 /* Relinquish the ownership granted for STREAM.  */
 funlockfile :: (__stream: *FILE) -> void #foreign libc;
 
+/* Slow-path routines used by the optimized inline functions in
+bits/stdio.h.  */
+__uflow :: (unknown0: *FILE) -> s32 #foreign libc;
+__overflow :: (unknown0: *FILE, unknown1: s32) -> s32 #foreign libc;
+
 flock :: struct {
     l_type:   s16;
     l_whence: s16;
-
     l_start:  s64;
     l_len:    s64;
-
     l_pid:    s32;
 }
 
@@ -946,57 +993,49 @@ pid_t :: s32;
 
 stat_t :: struct {
     st_dev:           u64;
-
     st_ino:           u64;
-
-    st_nlink:         u64;
     st_mode:          u32;
-
+    st_nlink:         u32;
     st_uid:           u32;
     st_gid:           u32;
-
-    __pad0:           s32;
-
     st_rdev:          u64;
-
+    __pad1:           u64;
     st_size:          s64;
-
-    st_blksize:       s64;
-
+    st_blksize:       s32;
+    __pad2:           s32;
     st_blocks:        s64;
 
     st_atime:         timespec;
     st_mtime:         timespec;
     st_ctime:         timespec;
 
-    __glibc_reserved: [3] s64;
+    __glibc_reserved: [2] s32;
 }
 
 stat64_t :: struct {
     st_dev:           u64;
-
     st_ino:           u64;
-    st_nlink:         u64;
     st_mode:          u32;
-
+    st_nlink:         u32;
     st_uid:           u32;
     st_gid:           u32;
-
-    __pad0:           s32;
     st_rdev:          u64;
+    __pad1:           u64;
     st_size:          s64;
-
-    st_blksize:       s64;
+    st_blksize:       s32;
+    __pad2:           s32;
     st_blocks:        s64;
 
     st_atime:         timespec;
     st_mtime:         timespec;
     st_ctime:         timespec;
 
-    __glibc_reserved: [3] s64;
+    __glibc_reserved: [2] s32;
 }
 
 fcntl :: (__fd: s32, __cmd: s32, __args: ..Any) -> s32 #foreign libc;
+
+fcntl64 :: (__fd: s32, __cmd: s32, __args: ..Any) -> s32 #foreign libc;
 
 open :: (__file: *u8, __oflag: s32, __args: ..Any) -> s32 #foreign libc;
 
@@ -1028,13 +1067,34 @@ gid_t :: u32;
 
 ino_t :: u64;
 
-nlink_t :: u64;
+nlink_t :: u32;
 
 uid_t :: u32;
 
 blkcnt_t :: s64;
 
-blksize_t :: s64;
+blksize_t :: s32;
+
+/* Get file attributes for FILE and put them in BUF.  */
+stat :: (__file: *u8, __buf: *stat_t) -> s32 #foreign libc;
+
+/* Get file attributes for the file, device, pipe, or socket
+that file descriptor FD is open on and put them in BUF.  */
+fstat :: (__fd: s32, __buf: *stat_t) -> s32 #foreign libc;
+
+stat64 :: (__file: *u8, __buf: *stat64_t) -> s32 #foreign libc;
+
+fstat64 :: (__fd: s32, __buf: *stat64_t) -> s32 #foreign libc;
+
+fstatat :: (__fd: s32, __file: *u8, __buf: *stat_t, __flag: s32) -> s32 #foreign libc;
+
+fstatat64 :: (__fd: s32, __file: *u8, __buf: *stat64_t, __flag: s32) -> s32 #foreign libc;
+
+/* Get file attributes about FILE and put them in BUF.
+If FILE is a symbolic link, do not follow it.  */
+lstat :: (__file: *u8, __buf: *stat_t) -> s32 #foreign libc;
+
+lstat64 :: (__file: *u8, __buf: *stat64_t) -> s32 #foreign libc;
 
 /* Set file access permissions for FILE to MODE.
 If FILE is a symbolic link, this affects its target instead.  */
@@ -1063,6 +1123,13 @@ interpret relative PATH names relative to the directory associated
 with FD.  */
 mkdirat :: (__fd: s32, __path: *u8, __mode: u32) -> s32 #foreign libc;
 
+mknod :: (__path: *u8, __mode: u32, __dev: u64) -> s32 #foreign libc;
+
+/* Like mknod, create a new device file with permission bits MODE and
+device number DEV.  But interpret relative PATH names relative to
+the directory associated with FD.  */
+mknodat :: (__fd: s32, __path: *u8, __mode: u32, __dev: u64) -> s32 #foreign libc;
+
 /* Create a new FIFO named PATH, with permission bits MODE.  */
 mkfifo :: (__path: *u8, __mode: u32) -> s32 #foreign libc;
 
@@ -1078,34 +1145,50 @@ utimensat :: (__fd: s32, __path: *u8, __times: *[2] timespec, __flags: s32) -> s
 /* Set file access and modification times of the file associated with FD.  */
 futimens :: (__fd: s32, __times: *[2] timespec) -> s32 #foreign libc;
 
-__fxstat :: (__ver: s32, __fildes: s32, __stat_buf: *stat_t) -> s32 #foreign libc;
+statx_timestamp :: struct {
+    tv_sec:     s64;
+    tv_nsec:    u32;
+    __reserved: s32;
+}
 
-__xstat :: (__ver: s32, __filename: *u8, __stat_buf: *stat_t) -> s32 #foreign libc;
+statx_t :: struct {
+    stx_mask:             u32;
+    stx_blksize:          u32;
+    stx_attributes:       u64;
 
-__lxstat :: (__ver: s32, __filename: *u8, __stat_buf: *stat_t) -> s32 #foreign libc;
+    stx_nlink:            u32;
+    stx_uid:              u32;
+    stx_gid:              u32;
+    stx_mode:             u16;
+    __spare0:             [1] u16;
 
-__fxstatat :: (__ver: s32, __fildes: s32, __filename: *u8, __stat_buf: *stat_t, __flag: s32) -> s32 #foreign libc;
+    stx_ino:              u64;
+    stx_size:             u64;
+    stx_blocks:           u64;
+    stx_attributes_mask:  u64;
 
-__fxstat64 :: (__ver: s32, __fildes: s32, __stat_buf: *stat64_t) -> s32 #foreign libc;
+    stx_atime:            statx_timestamp;
+    stx_btime:            statx_timestamp;
+    stx_ctime:            statx_timestamp;
+    stx_mtime:            statx_timestamp;
 
-__xstat64 :: (__ver: s32, __filename: *u8, __stat_buf: *stat64_t) -> s32 #foreign libc;
+    stx_rdev_major:       u32;
+    stx_rdev_minor:       u32;
+    stx_dev_major:        u32;
+    stx_dev_minor:        u32;
 
-__lxstat64 :: (__ver: s32, __filename: *u8, __stat_buf: *stat64_t) -> s32 #foreign libc;
+    stx_mnt_id:           u64;
+    stx_dio_mem_align:    u32;
+    stx_dio_offset_align: u32;
 
-__fxstatat64 :: (__ver: s32, __fildes: s32, __filename: *u8, __stat_buf: *stat64_t, __flag: s32) -> s32 #foreign libc;
+    __spare3:             [12] u64;
+}
 
-__xmknod :: (__ver: s32, __path: *u8, __mode: u32, __dev: *u64) -> s32 #foreign libc;
-
-__xmknodat :: (__ver: s32, __fd: s32, __path: *u8, __mode: u32, __dev: *u64) -> s32 #foreign libc;
-
-/* Perform the I/O control operation specified by REQUEST on FD.
-One argument may follow; its presence and type depend on REQUEST.
-Return value depends on REQUEST.  Usually -1 indicates error.  */
 ioctl :: (__fd: s32, __request: u64, __args: ..Any) -> s32 #foreign libc;
 
 /* Asynchronous I/O control block.  */
 aiocb :: struct {
-    aio_fildes:       s32; /* File desriptor.  */
+    aio_fildes:       s32; /* File descriptor.  */
     aio_lio_opcode:   s32; /* Operation to be performed.  */
     aio_reqprio:      s32; /* Request priority offset.  */
     aio_buf:          *void; /* Location of buffer.  */
@@ -1126,7 +1209,7 @@ aiocb :: struct {
 }
 
 aiocb64 :: struct {
-    aio_fildes:       s32; /* File desriptor.  */
+    aio_fildes:       s32; /* File descriptor.  */
     aio_lio_opcode:   s32; /* Operation to be performed.  */
     aio_reqprio:      s32; /* Request priority offset.  */
     aio_buf:          *void; /* Location of buffer.  */
@@ -1144,11 +1227,10 @@ aiocb64 :: struct {
     __glibc_reserved: [32] u8;
 }
 
-/* To customize the implementation one can use the following struct.
-This implementation follows the one in Irix.  */
+/* To optimize the implementation one can use the following struct.  */
 aioinit :: struct {
-    aio_threads:   s32; /* Maximal number of threads.  */
-    aio_num:       s32; /* Number of expected simultanious requests. */
+    aio_threads:   s32; /* Maximum number of threads.  */
+    aio_num:       s32; /* Number of expected simultaneous requests.  */
     aio_locks:     s32; /* Not used.  */
     aio_usedba:    s32; /* Not used.  */
     aio_debug:     s32; /* Not used.  */
@@ -1160,7 +1242,7 @@ aioinit :: struct {
     aio_reserved:  s32;
 }
 
-/* Return values of cancelation function.  */
+/* Return values of the aio_cancel function.  */
 AIO :: enum u32 {
     CANCELED    :: 0;
 
@@ -1201,52 +1283,52 @@ LIO_1 :: enum u32 {
     LIO_NOWAIT :: NOWAIT;
 }
 
-aio_init :: (__init: *aioinit) -> void #foreign librt;
+aio_init :: (__init: *aioinit) -> void #foreign libc;
 
 /* Enqueue read request for given number of bytes and the given priority.  */
-aio_read :: (__aiocbp: *aiocb) -> s32 #foreign librt;
+aio_read :: (__aiocbp: *aiocb) -> s32 #foreign libc;
 
 /* Enqueue write request for given number of bytes and the given priority.  */
-aio_write :: (__aiocbp: *aiocb) -> s32 #foreign librt;
+aio_write :: (__aiocbp: *aiocb) -> s32 #foreign libc;
 
 /* Initiate list of I/O requests.  */
-lio_listio :: (__mode: s32, __list: **aiocb, __nent: s32, __sig: *sigevent) -> s32 #foreign librt;
+lio_listio :: (__mode: s32, __list: **aiocb, __nent: s32, __sig: *sigevent) -> s32 #foreign libc;
 
 /* Retrieve error status associated with AIOCBP.  */
-aio_error :: (__aiocbp: *aiocb) -> s32 #foreign librt;
+aio_error :: (__aiocbp: *aiocb) -> s32 #foreign libc;
 
 /* Return status associated with AIOCBP.  */
-aio_return :: (__aiocbp: *aiocb) -> s64 #foreign librt;
+aio_return :: (__aiocbp: *aiocb) -> s64 #foreign libc;
 
 /* Try to cancel asynchronous I/O requests outstanding against file
 descriptor FILDES.  */
-aio_cancel :: (__fildes: s32, __aiocbp: *aiocb) -> s32 #foreign librt;
+aio_cancel :: (__fildes: s32, __aiocbp: *aiocb) -> s32 #foreign libc;
 
 /* Suspend calling thread until at least one of the asynchronous I/O
 operations referenced by LIST has completed.
 
 This function is a cancellation point and therefore not marked with
 __THROW.  */
-aio_suspend :: (__list: **aiocb, __nent: s32, __timeout: *timespec) -> s32 #foreign librt;
+aio_suspend :: (__list: **aiocb, __nent: s32, __timeout: *timespec) -> s32 #foreign libc;
 
 /* Force all operations associated with file desriptor described by
 `aio_fildes' member of AIOCBP.  */
-aio_fsync :: (__operation: s32, __aiocbp: *aiocb) -> s32 #foreign librt;
+aio_fsync :: (__operation: s32, __aiocbp: *aiocb) -> s32 #foreign libc;
 
-aio_read64 :: (__aiocbp: *aiocb64) -> s32 #foreign librt;
-aio_write64 :: (__aiocbp: *aiocb64) -> s32 #foreign librt;
+aio_read64 :: (__aiocbp: *aiocb64) -> s32 #foreign libc;
+aio_write64 :: (__aiocbp: *aiocb64) -> s32 #foreign libc;
 
-lio_listio64 :: (__mode: s32, __list: **aiocb64, __nent: s32, __sig: *sigevent) -> s32 #foreign librt;
+lio_listio64 :: (__mode: s32, __list: **aiocb64, __nent: s32, __sig: *sigevent) -> s32 #foreign libc;
 
-aio_error64 :: (__aiocbp: *aiocb64) -> s32 #foreign librt;
+aio_error64 :: (__aiocbp: *aiocb64) -> s32 #foreign libc;
 
-aio_return64 :: (__aiocbp: *aiocb64) -> s64 #foreign librt;
+aio_return64 :: (__aiocbp: *aiocb64) -> s64 #foreign libc;
 
-aio_cancel64 :: (__fildes: s32, __aiocbp: *aiocb64) -> s32 #foreign librt;
+aio_cancel64 :: (__fildes: s32, __aiocbp: *aiocb64) -> s32 #foreign libc;
 
-aio_suspend64 :: (__list: **aiocb64, __nent: s32, __timeout: *timespec) -> s32 #foreign librt;
+aio_suspend64 :: (__list: **aiocb64, __nent: s32, __timeout: *timespec) -> s32 #foreign libc;
 
-aio_fsync64 :: (__operation: s32, __aiocbp: *aiocb64) -> s32 #foreign librt;
+aio_fsync64 :: (__operation: s32, __aiocbp: *aiocb64) -> s32 #foreign libc;
 
 EFD :: enum u32 {
     SEMAPHORE :: 1;
@@ -1318,23 +1400,28 @@ SFD :: enum u32 {
 }
 
 signalfd_siginfo :: struct {
-    ssi_signo:   u32;
-    ssi_errno:   s32;
-    ssi_code:    s32;
-    ssi_pid:     u32;
-    ssi_uid:     u32;
-    ssi_fd:      s32;
-    ssi_tid:     u32;
-    ssi_band:    u32;
-    ssi_overrun: u32;
-    ssi_trapno:  u32;
-    ssi_status:  s32;
-    ssi_int:     s32;
-    ssi_ptr:     u64;
-    ssi_utime:   u64;
-    ssi_stime:   u64;
-    ssi_addr:    u64;
-    __pad:       [48] u8;
+    ssi_signo:     u32;
+    ssi_errno:     s32;
+    ssi_code:      s32;
+    ssi_pid:       u32;
+    ssi_uid:       u32;
+    ssi_fd:        s32;
+    ssi_tid:       u32;
+    ssi_band:      u32;
+    ssi_overrun:   u32;
+    ssi_trapno:    u32;
+    ssi_status:    s32;
+    ssi_int:       s32;
+    ssi_ptr:       u64;
+    ssi_utime:     u64;
+    ssi_stime:     u64;
+    ssi_addr:      u64;
+    ssi_addr_lsb:  u16;
+    __pad2:        u16;
+    ssi_syscall:   s32;
+    ssi_call_addr: u64;
+    ssi_arch:      u32;
+    __pad:         [28] u8;
 }
 
 /* Request notification for delivery of signals in MASK to be
@@ -1357,9 +1444,5 @@ _IO_FILE :: struct {};
 ftello64 :: ftello;
 }
 
-// for some reason a handfull of syscalls on Linux arent available in libc.so by default
-// (they exist as a static link in) so we need to wrap syscall for these to work...
-stat  :: (path: *u8, buf: *stat_t) -> s64 { return syscall(SYS_stat, path, buf); }
-fstat :: (fd:   s32, buf: *stat_t) -> s64 { return syscall(SYS_fstat, fd, buf); }
-lstat :: (path: *u8, buf: *stat_t) -> s64 { return syscall(SYS_lstat, path, buf); }
+
 

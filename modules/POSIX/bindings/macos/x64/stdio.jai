@@ -604,44 +604,80 @@ ostat :: struct {
 }
 
 stat_t :: struct {
+    /* [XSI] ID of device containing file */
     st_dev:       dev_t;
+    /* [XSI] Mode of file (see below) */
     st_mode:      mode_t;
+    /* [XSI] Number of hard links */
     st_nlink:     nlink_t;
+    /* [XSI] File serial number */
     st_ino:       u64;
+    /* [XSI] User ID of the file */
     st_uid:       uid_t;
+    /* [XSI] Group ID of the file */
     st_gid:       gid_t;
+    /* [XSI] Device ID */
     st_rdev:      dev_t;
+    /* time of last access */
     st_atime:     timespec;
+    /* time of last data modification */
     st_mtime:     timespec;
+    /* time of last status change */
     st_ctime:     timespec;
+    /* time of file creation(birth) */
     st_birthtime: timespec;
+    /* [XSI] file size, in bytes */
     st_size:      s64;
+    /* [XSI] blocks allocated for file */
     st_blocks:    blkcnt_t;
+    /* [XSI] optimal blocksize for I/O */
     st_blksize:   blksize_t;
+    /* user defined flags for file */
     st_flags:     u32;
+    /* file generation number */
     st_gen:       u32;
+    /* RESERVED: DO NOT USE! */
     st_lspare:    s32;
+    /* RESERVED: DO NOT USE! */
     st_qspare:    [2] s64;
 }
 
 stat64_t :: struct {
+    /* [XSI] ID of device containing file */
     st_dev:       dev_t;
+    /* [XSI] Mode of file (see below) */
     st_mode:      mode_t;
+    /* [XSI] Number of hard links */
     st_nlink:     nlink_t;
+    /* [XSI] File serial number */
     st_ino:       u64;
+    /* [XSI] User ID of the file */
     st_uid:       uid_t;
+    /* [XSI] Group ID of the file */
     st_gid:       gid_t;
+    /* [XSI] Device ID */
     st_rdev:      dev_t;
+    /* time of last access */
     st_atime:     timespec;
+    /* time of last data modification */
     st_mtime:     timespec;
+    /* time of last status change */
     st_ctime:     timespec;
+    /* time of file creation(birth) */
     st_birthtime: timespec;
+    /* [XSI] file size, in bytes */
     st_size:      s64;
+    /* [XSI] blocks allocated for file */
     st_blocks:    blkcnt_t;
+    /* [XSI] optimal blocksize for I/O */
     st_blksize:   blksize_t;
+    /* user defined flags for file */
     st_flags:     u32;
+    /* file generation number */
     st_gen:       u32;
+    /* RESERVED: DO NOT USE! */
     st_lspare:    s32;
+    /* RESERVED: DO NOT USE! */
     st_qspare:    [2] s64;
 }
 

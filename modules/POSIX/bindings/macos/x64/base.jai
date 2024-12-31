@@ -1235,38 +1235,40 @@ getpwuuid_r :: (unknown0: *uuid_t, unknown1: *passwd, unknown2: *u8, unknown3: u
 sig_atomic_t :: s32;
 
 __darwin_fp_control :: struct {
-    __invalid:   u16;
-    #place __invalid; /*bitfield 1*/ __denorm:    u16;
-    #place __invalid; /*bitfield 2*/ __zdiv:      u16;
-    #place __invalid; /*bitfield 3*/ __ovrfl:     u16;
-    #place __invalid; /*bitfield 4*/ __undfl:     u16;
-    #place __invalid; /*bitfield 5*/ __precis:    u16;
-
-    #place __invalid; /*bitfield 6*/ anon_decl:   u16;
-
-    #place __invalid; /*bitfield 8*/ __pc:        u16;
-
-    #place __invalid; /*bitfield 10*/ __rc:        u16;
-
-    #place __invalid; /*bitfield 12*/ anon_decl_1: u16;
-    #place __invalid; /*bitfield 13*/ anon_decl_2: u16;
+    __bitfield: u16;
+    /* 
+        __invalid: u16; /* 1 bits */
+        __denorm: u16; /* 1 bits */
+        __zdiv: u16; /* 1 bits */
+        __ovrfl: u16; /* 1 bits */
+        __undfl: u16; /* 1 bits */
+        __precis: u16; /* 1 bits */
+        anon_decl: u16; /* 2 bits */
+        __pc: u16; /* 2 bits */
+        __rc: u16; /* 2 bits */
+        anon_decl: u16; /* 1 bits */
+        anon_decl: u16; /* 3 bits */;
+    */
 }
 
 __darwin_fp_status :: struct {
-    __invalid: u16;
-    #place __invalid; /*bitfield 1*/ __denorm:  u16;
-    #place __invalid; /*bitfield 2*/ __zdiv:    u16;
-    #place __invalid; /*bitfield 3*/ __ovrfl:   u16;
-    #place __invalid; /*bitfield 4*/ __undfl:   u16;
-    #place __invalid; /*bitfield 5*/ __precis:  u16;
-    #place __invalid; /*bitfield 6*/ __stkflt:  u16;
-    #place __invalid; /*bitfield 7*/ __errsumm: u16;
-    #place __invalid; /*bitfield 8*/ __c0:      u16;
-    #place __invalid; /*bitfield 9*/ __c1:      u16;
-    #place __invalid; /*bitfield 10*/ __c2:      u16;
-    #place __invalid; /*bitfield 11*/ __tos:     u16;
-    #place __invalid; /*bitfield 14*/ __c3:      u16;
-    #place __invalid; /*bitfield 15*/ __busy:    u16;
+    __bitfield: u16;
+    /* 
+        __invalid: u16; /* 1 bits */
+        __denorm: u16; /* 1 bits */
+        __zdiv: u16; /* 1 bits */
+        __ovrfl: u16; /* 1 bits */
+        __undfl: u16; /* 1 bits */
+        __precis: u16; /* 1 bits */
+        __stkflt: u16; /* 1 bits */
+        __errsumm: u16; /* 1 bits */
+        __c0: u16; /* 1 bits */
+        __c1: u16; /* 1 bits */
+        __c2: u16; /* 1 bits */
+        __tos: u16; /* 3 bits */
+        __c3: u16; /* 1 bits */
+        __busy: u16; /* 1 bits */;
+    */
 }
 
 __darwin_mmst_reg :: struct {
@@ -1752,16 +1754,22 @@ wait_t :: union {
     w_status: s32; /* used in syscall */
 
     w_T:      struct {
-        w_Termsig:  u32; /* termination signal */
-        #place w_Termsig; /*bitfield 7*/ w_Coredump: u32; /* core dump indicator */
-        #place w_Termsig; /*bitfield 8*/ w_Retcode:  u32; /* exit code if w_termsig==0 */
-        #place w_Termsig; /*bitfield 16*/ w_Filler:   u32; /* upper bits filler */
+        __bitfield: u32;
+        /* 
+            w_Termsig: u32; /* 7 bits */ /* termination signal */
+            w_Coredump: u32; /* 1 bits */ /* core dump indicator */
+            w_Retcode: u32; /* 8 bits */ /* exit code if w_termsig==0 */
+            w_Filler: u32; /* 16 bits */ /* upper bits filler */;
+        */
     };
 
     w_S:      struct {
-        w_Stopval: u32; /* == W_STOPPED if stopped */
-        #place w_Stopval; /*bitfield 8*/ w_Stopsig: u32; /* signal that stopped us */
-        #place w_Stopval; /*bitfield 16*/ w_Filler:  u32; /* upper bits filler */
+        __bitfield: u32;
+        /* 
+            w_Stopval: u32; /* 8 bits */ /* == W_STOPPED if stopped */
+            w_Stopsig: u32; /* 8 bits */ /* signal that stopped us */
+            w_Filler: u32; /* 16 bits */ /* upper bits filler */;
+        */
     };
 }
 

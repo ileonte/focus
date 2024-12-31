@@ -1767,16 +1767,22 @@ wait_t :: union {
     w_status: s32; /* used in syscall */
 
     w_T:      struct {
-        w_Termsig:  u32; /* termination signal */
-        #place w_Termsig; /*bitfield 7*/ w_Coredump: u32; /* core dump indicator */
-        #place w_Termsig; /*bitfield 8*/ w_Retcode:  u32; /* exit code if w_termsig==0 */
-        #place w_Termsig; /*bitfield 16*/ w_Filler:   u32; /* upper bits filler */
+        __bitfield: u32;
+        /* 
+            w_Termsig: u32; /* 7 bits */ /* termination signal */
+            w_Coredump: u32; /* 1 bits */ /* core dump indicator */
+            w_Retcode: u32; /* 8 bits */ /* exit code if w_termsig==0 */
+            w_Filler: u32; /* 16 bits */ /* upper bits filler */;
+        */
     };
 
     w_S:      struct {
-        w_Stopval: u32; /* == W_STOPPED if stopped */
-        #place w_Stopval; /*bitfield 8*/ w_Stopsig: u32; /* signal that stopped us */
-        #place w_Stopval; /*bitfield 16*/ w_Filler:  u32; /* upper bits filler */
+        __bitfield: u32;
+        /* 
+            w_Stopval: u32; /* 8 bits */ /* == W_STOPPED if stopped */
+            w_Stopsig: u32; /* 8 bits */ /* signal that stopped us */
+            w_Filler: u32; /* 16 bits */ /* upper bits filler */;
+        */
     };
 }
 

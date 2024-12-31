@@ -1661,39 +1661,42 @@ wait3 :: (__stat_loc: *s32, __options: s32, __usage: *rusage) -> s32 #foreign li
 wait4 :: (__pid: s32, __stat_loc: *s32, __options: s32, __usage: *rusage) -> s32 #foreign libc;
 
 timex :: struct {
-    modes:        u32;
-    offset:       s64;
-    freq:         s64;
-    maxerror:     s64;
-    esterror:     s64;
-    status:       s32;
-    constant:     s64;
-    precision:    s64;
-    tolerance:    s64;
-    time:         timeval;
-    tick:         s64;
-    ppsfreq:      s64;
-    jitter:       s64;
-    shift:        s32;
-    stabil:       s64;
-    jitcnt:       s64;
-    calcnt:       s64;
-    errcnt:       s64;
-    stbcnt:       s64;
+    modes:      u32;
+    offset:     s64;
+    freq:       s64;
+    maxerror:   s64;
+    esterror:   s64;
+    status:     s32;
+    constant:   s64;
+    precision:  s64;
+    tolerance:  s64;
+    time:       timeval;
+    tick:       s64;
+    ppsfreq:    s64;
+    jitter:     s64;
+    shift:      s32;
+    stabil:     s64;
+    jitcnt:     s64;
+    calcnt:     s64;
+    errcnt:     s64;
+    stbcnt:     s64;
 
-    tai:          s32;
+    tai:        s32;
 
-    anon_decl:    s32;
-    anon_decl_1:  s32;
-    anon_decl_2:  s32;
-    anon_decl_3:  s32;
-    anon_decl_4:  s32;
-    anon_decl_5:  s32;
-    anon_decl_6:  s32;
-    anon_decl_7:  s32;
-    anon_decl_8:  s32;
-    anon_decl_9:  s32;
-    anon_decl_10: s32;
+    __bitfield: [44] u8;
+    /* 
+        anon_decl: s32; /* 32 bits */
+        anon_decl: s32; /* 32 bits */
+        anon_decl: s32; /* 32 bits */
+        anon_decl: s32; /* 32 bits */
+        anon_decl: s32; /* 32 bits */
+        anon_decl: s32; /* 32 bits */
+        anon_decl: s32; /* 32 bits */
+        anon_decl: s32; /* 32 bits */
+        anon_decl: s32; /* 32 bits */
+        anon_decl: s32; /* 32 bits */
+        anon_decl: s32; /* 32 bits */;
+    */
 }
 
 clock_adjtime :: (__clock_id: s32, __utx: *timex) -> s32 #foreign libc;
