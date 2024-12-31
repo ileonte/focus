@@ -921,18 +921,71 @@ Builtin_Theme :: struct {
     contents: string;
 }
 
-BUILTIN_THEMES :: #run -> [] Builtin_Theme {
-    themes: [..] Builtin_Theme;
+BUILTIN_THEMES_DATA :: #run,host -> [] u8 {
+    #import "Basic";
+    #import "String";
+    #import "File";
+    #import "File_Utilities";
 
-    visitor :: (info: *File_Visit_Info, themes: *[..] Builtin_Theme) {
+    data: [..]u8;
+
+    serialize_int :: (data: *[..]u8, v: int) {
+        c := data.count;
+        array_resize(data, c + size_of(int));
+        (cast(*int) (data.data + c)).* = v;
+    }
+
+    serialize_string :: (data: *[..]u8, v: string) {
+        c := data.count;
+        array_resize(data, c + size_of(int) + v.count);
+        (cast(*int) (data.data + c)).* = v.count;
+        memcpy(data.data + c + size_of(int), v.data, v.count);
+    }
+
+    visitor :: (info: *File_Visit_Info, data: *[..]u8) {
         full_path := info.full_name;
         path, basename, extension, name := path_decomp(full_path);
         if extension != "focus-theme" return;
         file_contents, success := read_entire_file(full_path);
         if !success return;
-        array_add(themes, Builtin_Theme.{ name = basename, contents = file_contents });
+
+        serialize_string(data, basename);
+        serialize_string(data, file_contents);
+        (cast(*int) data.data).* += 1;
     }
-    visit_files("config/themes", recursive = false, *themes, visitor, visit_files = true, visit_directories = false);
+
+    serialize_int(*data, 0);
+    visit_files("config/themes", recursive = false, *data, visitor, visit_files = true, visit_directories = false);
+
+    print(">> THEME DATA: count=% size=%\n", (cast(*int)data.data).*, data.count);
+    return data;
+}
+
+BUILTIN_THEMES :: #run -> [] Builtin_Theme {
+    themes: [..] Builtin_Theme;
+    pos := 0;
+
+    deserialize :: (array: []u8, pos: *int, $T: Type, count := 1) -> *T {
+        ret := cast(*T)(array.data + pos.*);
+        pos.* += size_of(T) * count;
+        return ret;
+    }
+
+    count := deserialize(BUILTIN_THEMES_DATA, *pos, int).*;
+    for 1..count {
+        name_c := deserialize(BUILTIN_THEMES_DATA, *pos, int).*;
+        name_d := deserialize(BUILTIN_THEMES_DATA, *pos, u8, name_c);
+
+        data_c := deserialize(BUILTIN_THEMES_DATA, *pos, int).*;
+        data_d := deserialize(BUILTIN_THEMES_DATA, *pos, u8, data_c);
+
+        array_add(*themes, Builtin_Theme.{
+            name = .{ count = name_c, data = name_d },
+            contents = .{ count = data_c, data = data_d },
+        });
+    }
+
+    print(">> THEMES: serialized_count=% parsed_count=%\n", count, themes.count);
 
     return themes;
 }
