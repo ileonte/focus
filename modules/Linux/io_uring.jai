@@ -2,9 +2,134 @@
 
 // This is new and untested. Use at your own risk.    -17 June 2022
 
-//SYS_io_uring_setup         :: 425;
-//SYS_io_uring_enter         :: 426;
-//SYS_io_uring_register      :: 427;
+#if CPU == .X64 {
+    // @header statx.h
+    // Timestamp structure for the timestamps in struct statx.
+    statx_timestamp_t :: struct {
+        tv_sec:     s64; // number of seconds before (negative) or after (positive) 00:00:00 1st January 1970 UTC.
+        tv_nsec:    u32; // number of nanoseconds (0..999,999,999) after the tv_sec time.
+        __reserved: s32; // in case we need a yet finer resolution.
+    }
+
+    /*
+    Structures for the extended file attribute retrieval system call (statx()).
+
+    The caller passes a mask of what they're specifically interested in as a parameter
+    to statx().  What statx() actually got will be indicated in st_mask upon return.
+
+    For each bit in the mask argument:
+
+    - if the datum is not supported:
+
+    - the bit will be cleared, and
+
+    - the datum will be set to an appropriate fabricated value if one
+    is available (eg. CIFS can take a default uid and gid), otherwise
+
+    - the field will be cleared;
+
+    - otherwise, if explicitly requested:
+
+    - the datum will be synchronised to the server if AT_STATX_FORCE_SYNC
+    is set or if the datum is considered out of date, and
+
+    - the field will be filled in and the bit will be set;
+
+    - otherwise, if not requested, but available in approximate form without any effort, it
+    will be filled in anyway, and the bit will be set upon return (it might not be up to
+    date, however, and no attempt will be made to synchronise the internal state first);
+
+    - otherwise the field and the bit will be cleared before returning.
+
+    Items in STATX_BASIC_STATS may be marked unavailable on return, but they will have values
+    installed for compatibility purposes so that stat() and co. can be emulated in userspace.
+    */
+    statx_t :: struct {
+        // 0x00
+        stx_mask:       u32; // What results were written [uncond]
+        stx_blksize:    u32; // Preferred general I/O size [uncond]
+        stx_attributes: u64; // Flags conveying information about the file [uncond]
+        // 0x10
+        stx_nlink:    u32; // Number of hard links
+        stx_uid:      u32; // User ID of owner
+        stx_gid:      u32; // Group ID of owner
+        stx_mode:     u16; // File mode
+        __spare0: [1] u16;
+        // 0x20
+        stx_ino:             u64; // Inode number
+        stx_size:            u64; // File size
+        stx_blocks:          u64; // Number of 512-byte blocks allocated
+        stx_attributes_mask: u64; // Mask to show what's supported in stx_attributes
+        // 0x40
+        stx_atime: statx_timestamp_t; // Last access time
+        stx_btime: statx_timestamp_t; // File creation time
+        stx_ctime: statx_timestamp_t; // Last attribute change time
+        stx_mtime: statx_timestamp_t; // Last data modification time
+        // 0x80
+        stx_rdev_major: u32; // Device ID of special file [if bdev/cdev]
+        stx_rdev_minor: u32;
+        stx_dev_major:  u32; // ID of device containing file [uncond]
+        stx_dev_minor:  u32;
+        // 0x90
+        stx_mnt_id: u64;
+        __spare2:   u64;
+        // 0xa0
+        __spare3: [12] u64; // Spare space for future expansion
+        // 0x100
+    };
+
+    // Flags to be stx_mask. Query request/result mask for statx() and struct statx::stx_mask. These bits
+    // should be set in the mask argument of statx() to request particular items when calling statx().
+    STATX_TYPE:        u32: 0x00000001; // Want/got stx_mode & S_IFMT
+    STATX_MODE:        u32: 0x00000002; // Want/got stx_mode & ~S_IFMT
+    STATX_NLINK:       u32: 0x00000004; // Want/got stx_nlink
+    STATX_UID:         u32: 0x00000008; // Want/got stx_uid
+    STATX_GID:         u32: 0x00000010; // Want/got stx_gid
+    STATX_ATIME:       u32: 0x00000020; // Want/got stx_atime
+    STATX_MTIME:       u32: 0x00000040; // Want/got stx_mtime
+    STATX_CTIME:       u32: 0x00000080; // Want/got stx_ctime
+    STATX_INO:         u32: 0x00000100; // Want/got stx_ino
+    STATX_SIZE:        u32: 0x00000200; // Want/got stx_size
+    STATX_BLOCKS:      u32: 0x00000400; // Want/got stx_blocks
+    STATX_BASIC_STATS: u32: 0x000007ff; // The stuff in the normal stat struct
+    STATX_BTIME:       u32: 0x00000800; // Want/got stx_btime
+    STATX_MNT_ID:      u32: 0x00001000; // Got stx_mnt_id
+
+    STATX__RESERVED:   u32: 0x80000000; // Reserved for future struct statx expansion
+
+    /*
+    Attributes to be found in stx_attributes and masked in stx_attributes_mask.
+
+    These give information about the features or the state of a file that might
+    be of use to ordinary userspace programs such as GUIs or ls rather than
+    specialised tools.
+
+    Note that the flags marked [I] correspond to the FS_IOC_SETFLAGS flags
+    semantically.  Where possible, the numerical value is picked to correspond
+    also.  Note that the DAX attribute indicates that the file is in the CPU
+    direct access state.  It does not correspond to the per-inode flag that
+    some filesystems support.
+    */
+    STATX_ATTR_COMPRESSED ::  0x00000004; // [I] File is compressed by the fs
+    STATX_ATTR_IMMUTABLE  ::  0x00000010; // [I] File is marked immutable
+    STATX_ATTR_APPEND     ::  0x00000020; // [I] File is append-only
+    STATX_ATTR_NODUMP     ::  0x00000040; // [I] File is not to be dumped
+    STATX_ATTR_ENCRYPTED  ::  0x00000800; // [I] File requires key to decrypt in fs
+    STATX_ATTR_AUTOMOUNT  ::  0x00001000; // Dir: Automount trigger
+    STATX_ATTR_MOUNT_ROOT ::  0x00002000; // Root of a mount
+    STATX_ATTR_VERITY     ::  0x00100000; // [I] Verity protected file
+    STATX_ATTR_DAX        ::  0x00200000; // File is currently in DAX state
+
+
+    AT_STATX_SYNC_TYPE    :: 0x6000; // Type of synchronisation required from statx()
+    AT_STATX_SYNC_AS_STAT :: 0x0000; // - Do whatever stat() does
+    AT_STATX_FORCE_SYNC   :: 0x2000; // - Force the attributes to be sync'd with the server
+    AT_STATX_DONT_SYNC    :: 0x4000; // - Don't sync attributes with the server
+
+    SYS_io_uring_setup         :: 425;
+    SYS_io_uring_enter         :: 426;
+    SYS_io_uring_register      :: 427;
+}
 
 // Wrappers for syscalls since glibc doesn't have them yet. These could be replaced with #asm syscalls to avoid libc
 io_uring_setup :: inline (entries: u32, p: *io_uring_params) -> s32 {
