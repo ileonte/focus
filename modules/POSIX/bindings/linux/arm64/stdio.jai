@@ -1075,12 +1075,16 @@ blkcnt_t :: s64;
 
 blksize_t :: s32;
 
+stat  :: (path: *u8, buf: *stat_t) -> s64 { return syscall(SYS_newfstatat, AT_FDCWD, path, buf, 0); }
+// fstat :: (fd:   s32, buf: *stat_t) -> s64 { return syscall(SYS_fstat, fd, buf); }
+// lstat :: (path: *u8, buf: *stat_t) -> s64 { return syscall(SYS_lstat, path, buf); }
+
 /* Get file attributes for FILE and put them in BUF.  */
-stat :: (__file: *u8, __buf: *stat_t) -> s32 #foreign libc;
+// stat :: (__file: *u8, __buf: *stat_t) -> s32 #foreign libc;
 
 /* Get file attributes for the file, device, pipe, or socket
 that file descriptor FD is open on and put them in BUF.  */
-fstat :: (__fd: s32, __buf: *stat_t) -> s32 #foreign libc;
+// fstat :: (__fd: s32, __buf: *stat_t) -> s32 #foreign libc;
 
 stat64 :: (__file: *u8, __buf: *stat64_t) -> s32 #foreign libc;
 
@@ -1092,7 +1096,7 @@ fstatat64 :: (__fd: s32, __file: *u8, __buf: *stat64_t, __flag: s32) -> s32 #for
 
 /* Get file attributes about FILE and put them in BUF.
 If FILE is a symbolic link, do not follow it.  */
-lstat :: (__file: *u8, __buf: *stat_t) -> s32 #foreign libc;
+// lstat :: (__file: *u8, __buf: *stat_t) -> s32 #foreign libc;
 
 lstat64 :: (__file: *u8, __buf: *stat64_t) -> s32 #foreign libc;
 
